@@ -130,7 +130,7 @@ export default function AssetListView({ list, db, onBack, onEdit, readOnly }: Pr
   return (
     <div className="space-y-5 animate-fade-in">
       {/* Header */}
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <button
           onClick={onBack}
           className="btn-ghost flex items-center gap-1"
@@ -186,7 +186,7 @@ export default function AssetListView({ list, db, onBack, onEdit, readOnly }: Pr
         value={search}
         onChange={e => setSearch(e.target.value)}
         placeholder="Search by name or ticker..."
-        className="input-field sm:max-w-[288px]"
+        className="input-field w-full sm:max-w-[288px]"
       />
 
       {/* Tag pills */}

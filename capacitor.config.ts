@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.warket.app',
+  appId: 'com.blhdes.warket',
   appName: 'warket',
   webDir: 'dist',
   server: {
@@ -10,7 +10,7 @@ const config: CapacitorConfig = {
   ios: {
     contentInset: 'automatic',
     preferredContentMode: 'mobile',
-    scheme: 'warket'
+    backgroundColor: '#08090d'
   },
   android: {
     buildOptions: {
@@ -19,6 +19,10 @@ const config: CapacitorConfig = {
     }
   },
   plugins: {
+    StatusBar: {
+      overlaysWebView: true,
+      style: 'DARK'
+    },
     SplashScreen: {
       launchAutoHide: true,
       launchShowDuration: 1500,

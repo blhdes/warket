@@ -30,7 +30,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
     if (Capacitor.isNativePlatform()) {
       StatusBar.setStyle({ style: theme === 'dark' ? Style.Dark : Style.Light })
-      StatusBar.setOverlaysWebView({ overlay: true })
     }
   }, [theme])
 

@@ -145,6 +145,11 @@ html.theme-transition *::after {
 /* ══════════════════════════════════════════════════════════
    BASE STYLES
    ══════════════════════════════════════════════════════════ */
+html {
+  background-color: var(--surface-0);
+  overscroll-behavior: none;
+}
+
 body {
   background-color: var(--surface-0);
   color: var(--text-primary);

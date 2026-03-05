@@ -52,7 +52,7 @@ export default function SharedVaultPage() {
 
   if (resolving) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--surface-0)' }}>
+      <div className="h-dvh flex items-center justify-center" style={{ backgroundColor: 'var(--surface-0)' }}>
         <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
           Resolving shared vault...
         </p>
@@ -62,7 +62,7 @@ export default function SharedVaultPage() {
 
   if (error || !vaultHash || !db) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--surface-0)' }}>
+      <div className="h-dvh flex items-center justify-center" style={{ backgroundColor: 'var(--surface-0)' }}>
         <div className="text-center space-y-4">
           <p style={{ color: 'var(--error)', fontSize: '0.875rem' }}>
             {error || 'Unable to load shared vault.'}
@@ -76,16 +76,17 @@ export default function SharedVaultPage() {
   }
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: 'var(--surface-0)' }}>
+    <div className="h-dvh flex flex-col overflow-hidden" style={{ backgroundColor: 'var(--surface-0)' }}>
       <div className="decorative-bg" />
 
       {/* Header */}
       <header
-        className="sticky top-0 z-40 gradient-border-bottom"
+        className="shrink-0 z-40 gradient-border-bottom"
         style={{
           backgroundColor: 'var(--header-bg)',
           backdropFilter: 'blur(12px)',
           WebkitBackdropFilter: 'blur(12px)',
+          paddingTop: 'env(safe-area-inset-top)',
         }}
       >
         <div className="mx-auto flex h-14 items-center justify-between px-4" style={{ maxWidth: '1400px' }}>
@@ -138,7 +139,10 @@ export default function SharedVaultPage() {
       </header>
 
       {/* Content */}
-      <main className="mx-auto px-4 py-6" style={{ maxWidth: '1400px' }}>
+      <main
+        className="flex-1 overflow-y-auto overflow-x-hidden w-full mx-auto px-4 py-6"
+        style={{ maxWidth: '1400px', paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom))', overscrollBehavior: 'none' }}
+      >
         <ListsView db={db} vaultHash={vaultHash} readOnly />
       </main>
 

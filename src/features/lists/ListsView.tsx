@@ -239,7 +239,7 @@ export default function ListsView({ db, vaultHash, readOnly }: Props) {
           value={search}
           onChange={e => setSearch(e.target.value)}
           placeholder="Search lists, assets, tickers..."
-          className="input-field sm:max-w-[256px]"
+          className="input-field w-full sm:max-w-[256px]"
         />
         {!readOnly && (
           <button

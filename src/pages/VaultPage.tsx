@@ -104,12 +104,12 @@ export default function VaultPage() {
   }
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: 'var(--surface-0)' }}>
+    <div className="h-dvh flex flex-col overflow-hidden" style={{ backgroundColor: 'var(--surface-0)' }}>
       <div className="decorative-bg" />
 
       {/* Header */}
       <header
-        className="sticky top-0 z-40 gradient-border-bottom"
+        className="shrink-0 z-40 gradient-border-bottom"
         style={{
           backgroundColor: 'var(--header-bg)',
           backdropFilter: 'blur(12px)',
@@ -232,7 +232,10 @@ export default function VaultPage() {
       </header>
 
       {/* Content */}
-      <main className="mx-auto px-4 py-6" style={{ maxWidth: '1400px' }}>
+      <main
+        className="flex-1 overflow-y-auto overflow-x-hidden w-full mx-auto px-4 py-6"
+        style={{ maxWidth: '1400px', paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom))', overscrollBehavior: 'none' }}
+      >
         {supabaseError ? (
           <div
             className="p-6 text-center"

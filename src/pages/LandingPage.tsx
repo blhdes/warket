@@ -111,7 +111,7 @@ export default function LandingPage() {
 
   return (
     <div
-      className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden"
+      className="h-dvh flex items-center justify-center p-4 relative overflow-hidden"
       style={{ backgroundColor: 'var(--surface-0)' }}
     >
       {/* Theme toggle */}
