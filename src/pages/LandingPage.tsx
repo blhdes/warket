@@ -7,6 +7,7 @@ import Logo from '../components/Logo'
 import ThemeToggle from '../components/ThemeToggle'
 import MarketPulse from '../components/MarketPulse'
 import { useTheme } from '../contexts/ThemeContext'
+import { haptic } from '../lib/haptics'
 
 const HEX_64 = /^[0-9a-f]{64}$/i
 const LS_VAULT_KEY = 'vault_hash_persistent'
@@ -33,6 +34,7 @@ export default function LandingPage() {
   }, [navigate])
 
   const handleGeneratePhrase = () => {
+    haptic.medium()
     const newPhrase = generateSeedPhrase()
     setPhrase(newPhrase)
     setHash('')
@@ -50,6 +52,7 @@ export default function LandingPage() {
   const handleAccessVault = async () => {
     const input = phrase.trim()
     if (!input) return
+    haptic.medium()
 
     setInputError('')
 
@@ -111,7 +114,7 @@ export default function LandingPage() {
 
   return (
     <div
-      className="h-dvh flex items-center justify-center p-4 relative overflow-hidden"
+      className="fixed inset-0 overflow-hidden"
       style={{ backgroundColor: 'var(--surface-0)' }}
     >
       {/* Theme toggle */}
@@ -141,8 +144,10 @@ export default function LandingPage() {
         }}
       />
 
-      {/* Container */}
-      <div className="w-full max-w-md relative z-10">
+      {/* Scrollable content layer */}
+      <div className="absolute inset-0 overflow-y-auto z-10 p-4">
+        <div className="min-h-full flex items-center justify-center">
+          <div className="w-full max-w-md relative">
         {/* Logo / Title */}
         <div className="text-center mb-12">
           <div
@@ -180,6 +185,13 @@ export default function LandingPage() {
             <textarea
               value={phrase}
               onChange={e => { setPhrase(e.target.value); setInputError('') }}
+              onKeyDown={e => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  handleAccessVault()
+                }
+              }}
+              enterKeyHint="go"
               placeholder="Enter a 12-word seed phrase or paste a share key..."
               className="input-field h-24 resize-none"
               style={{ fontFamily: 'var(--font-mono)' }}
@@ -293,6 +305,8 @@ export default function LandingPage() {
         >
           Your seed phrase is never stored or transmitted.
         </p>
+          </div>
+        </div>
       </div>
     </div>
   )

@@ -26,6 +26,7 @@ import { Skeleton } from '../../components/Skeleton'
 import { toast } from '../../components/Toast'
 import { updatePositions } from '../../lib/position'
 import { fetchAssetsForList } from '../../lib/queries'
+import { haptic } from '../../lib/haptics'
 
 interface Props {
   list: VaultList
@@ -112,6 +113,7 @@ export default function AssetListView({ list, db, onBack, onEdit, readOnly }: Pr
     setActiveDragId(null)
     const { active, over } = event
     if (!over || active.id === over.id) return
+    haptic.light()
 
     const oldIndex = assets.findIndex(a => a.id === active.id)
     const newIndex = assets.findIndex(a => a.id === over.id)
@@ -192,7 +194,7 @@ export default function AssetListView({ list, db, onBack, onEdit, readOnly }: Pr
       {/* Tag pills */}
       {allTags.length > 0 && (
         <div
-          className="flex flex-nowrap gap-2 overflow-x-auto pb-1"
+          className="flex flex-nowrap gap-2 overflow-x-auto pb-1 -mx-4 px-4"
           style={{ scrollbarWidth: 'none' }}
         >
           {activeTag && (

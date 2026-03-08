@@ -147,6 +147,7 @@ html.theme-transition *::after {
    ══════════════════════════════════════════════════════════ */
 html {
   background-color: var(--surface-0);
+  min-height: 100dvh;
   overscroll-behavior: none;
 }
 

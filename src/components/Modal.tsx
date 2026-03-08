@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
+import { Capacitor } from '@capacitor/core'
+import { haptic } from '../lib/haptics'
 
 interface ModalProps {
   open: boolean
@@ -27,6 +29,7 @@ export default function Modal({ open, onClose, title, children }: ModalProps) {
   /* ── Reset when open changes ─────────────────────────── */
   useEffect(() => {
     if (open) {
+      haptic.light()
       setIsClosing(false)
       if (closingTimer.current) clearTimeout(closingTimer.current)
       // Restore CSS open animations (clear inline overrides)
@@ -140,6 +143,42 @@ export default function Modal({ open, onClose, title, children }: ModalProps) {
     currentDragY.current = 0
   }, [onClose])
 
+  /* ── iOS keyboard: track visual viewport height ─────── */
+  const isNative = Capacitor.isNativePlatform()
+  const [vpHeight, setVpHeight] = useState<number | null>(null)
+
+  useEffect(() => {
+    if (!open || !isNative || !window.visualViewport) return
+
+    const onResize = () => {
+      setVpHeight(window.visualViewport!.height)
+    }
+    onResize()
+    window.visualViewport.addEventListener('resize', onResize)
+    return () => window.visualViewport!.removeEventListener('resize', onResize)
+  }, [open, isNative])
+
+  /* ── iOS keyboard: scroll focused input into view ────── */
+  const contentRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open || !isNative) return
+    const container = contentRef.current
+    if (!container) return
+
+    const onFocusIn = (e: FocusEvent) => {
+      const target = e.target as HTMLElement
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') {
+        requestAnimationFrame(() => {
+          target.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+        })
+      }
+    }
+
+    container.addEventListener('focusin', onFocusIn)
+    return () => container.removeEventListener('focusin', onFocusIn)
+  }, [open, isNative])
+
   /* ── Don't render unless open or animating out ────────── */
   if (!open && !isClosing) return null
 
@@ -162,7 +201,7 @@ export default function Modal({ open, onClose, title, children }: ModalProps) {
           border: '1px solid var(--border-hover)',
           borderRadius: '16px 16px 0 0',
           boxShadow: 'var(--modal-shadow)',
-          maxHeight: '90vh',
+          maxHeight: vpHeight ? `${vpHeight * 0.9}px` : '90vh',
           display: 'flex',
           flexDirection: 'column',
         }}
@@ -198,7 +237,7 @@ export default function Modal({ open, onClose, title, children }: ModalProps) {
             &times;
           </button>
         </div>
-        <div className="p-5 overflow-y-auto">{children}</div>
+        <div ref={contentRef} className="p-5 overflow-y-auto">{children}</div>
       </div>
     </div>,
     document.body,

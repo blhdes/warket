@@ -22,6 +22,7 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 import { faviconUrl } from '../../lib/favicon'
 import { toast } from '../../components/Toast'
+import { haptic } from '../../lib/haptics'
 import Modal from '../../components/Modal'
 import DescriptionModal from './DescriptionModal'
 import AddResourceModal from './AddResourceModal'
@@ -105,6 +106,7 @@ export default function AssetCard({ asset, db, onUpdate, onDelete, showDragHandl
     setActiveDragResourceId(null)
     const { active, over } = event
     if (!over || active.id === over.id) return
+    haptic.light()
 
     const oldIndex = resources.findIndex((_, i) => `resource-${i}` === active.id)
     const newIndex = resources.findIndex((_, i) => `resource-${i}` === over.id)
@@ -631,7 +633,7 @@ function DeleteTextButton({ onClick }: { onClick: () => void }) {
 
   return (
     <button
-      onClick={onClick}
+      onClick={() => { haptic.warning(); onClick() }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       title="Delete this asset"

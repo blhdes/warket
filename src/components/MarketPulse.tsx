@@ -167,6 +167,8 @@ export default function MarketPulse({ opacity = 0.5 }: { opacity?: number }) {
     let scrollPx = 0
     let lastBaseIdx = 0
     let nextVirtualIdx = 0
+    let lastResizeW = 0
+    let lastResizeH = 0
 
     // Watch for theme changes
     const observer = new MutationObserver(() => {
@@ -178,14 +180,20 @@ export default function MarketPulse({ opacity = 0.5 }: { opacity?: number }) {
     })
 
     function resize() {
+      const w = canvas!.offsetWidth
+      const h = canvas!.offsetHeight
+      if (w === lastResizeW && h === lastResizeH) return
+      lastResizeW = w
+      lastResizeH = h
+
       const dpr = window.devicePixelRatio || 1
-      canvas!.width = canvas!.offsetWidth * dpr
-      canvas!.height = canvas!.offsetHeight * dpr
+      canvas!.width = w * dpr
+      canvas!.height = h * dpr
       ctx!.setTransform(dpr, 0, 0, dpr, 0, 0)
 
-      screenCols = Math.floor(canvas!.offsetWidth / COL_WIDTH)
+      screenCols = Math.floor(w / COL_WIDTH)
       bufferCols = screenCols + 2
-      maxRows = Math.floor(canvas!.offsetHeight / FONT_SIZE)
+      maxRows = Math.floor(h / FONT_SIZE)
 
       if (columns.length === 0) {
         nextVirtualIdx = 0

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { VaultList } from '../../lib/types'
@@ -24,7 +24,9 @@ import Modal from '../../components/Modal'
 import { ListCardSkeleton } from '../../components/Skeleton'
 import { toast } from '../../components/Toast'
 import { updatePositions } from '../../lib/position'
+import { haptic } from '../../lib/haptics'
 import AssetListView from '../assets/AssetListView'
+import { useFormNavigation } from '../../hooks/useFormNavigation'
 
 type ListWithCount = VaultList & { asset_count: number }
 
@@ -187,6 +189,7 @@ export default function ListsView({ db, vaultHash, readOnly }: Props) {
     setActiveDragId(null)
     const { active, over } = event
     if (!over || active.id === over.id) return
+    haptic.light()
 
     const oldIndex = lists.findIndex(l => l.id === active.id)
     const newIndex = lists.findIndex(l => l.id === over.id)
@@ -532,6 +535,8 @@ function CreateListModal({
   const [name, setName] = useState('')
   const [tagsInput, setTagsInput] = useState('')
   const [saving, setSaving] = useState(false)
+  const formRef = useRef<HTMLFormElement>(null)
+  useFormNavigation(formRef)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -551,7 +556,7 @@ function CreateListModal({
 
   return (
     <Modal open={open} onClose={onClose} title="New List">
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-1.5">
           <label className="label-sm block">
             Name
@@ -610,6 +615,8 @@ function EditListModal({
   const [tagsInput, setTagsInput] = useState('')
   const [saving, setSaving] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const formRef = useRef<HTMLFormElement>(null)
+  useFormNavigation(formRef)
 
   useEffect(() => {
     if (open && list) {
@@ -643,7 +650,7 @@ function EditListModal({
 
   return (
     <Modal open={open} onClose={onClose} title="Edit List">
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-1.5">
           <label className="label-sm block">Name</label>
           <input
@@ -682,7 +689,7 @@ function EditListModal({
       >
         {!confirmDelete ? (
           <button
-            onClick={() => setConfirmDelete(true)}
+            onClick={() => { haptic.warning(); setConfirmDelete(true) }}
             className="text-sm"
             style={{ color: 'var(--error)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
           >

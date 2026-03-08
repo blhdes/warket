@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react'
+import { haptic } from '../lib/haptics'
 
 interface ToastMessage {
   id: number
@@ -9,6 +10,8 @@ interface ToastMessage {
 let addToast: (text: string, type: 'error' | 'success') => void = () => {}
 
 export function toast(text: string, type: 'error' | 'success' = 'error') {
+  if (type === 'success') haptic.success()
+  else haptic.error()
   addToast(text, type)
 }
 

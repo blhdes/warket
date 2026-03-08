@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Asset, Resource } from '../../lib/types'
 import { faviconUrl, extractHostname } from '../../lib/favicon'
 import { fetchPageTitle } from '../../lib/fetchTitle'
 import Modal from '../../components/Modal'
 import { toast } from '../../components/Toast'
+import { useFormNavigation } from '../../hooks/useFormNavigation'
 
 interface Props {
   open: boolean
@@ -30,6 +31,8 @@ export default function AddAssetModal({ open, onClose, db, listId, onCreated }: 
   // ── Hover state for interactive styling ──────────────────
   const [hoveredResIdx, setHoveredResIdx] = useState<number | null>(null)
   const [hoveredRemoveIdx, setHoveredRemoveIdx] = useState<number | null>(null)
+  const formRef = useRef<HTMLFormElement>(null)
+  useFormNavigation(formRef)
 
   const hostname = extractHostname(resUrl)
   const isValidUrl = hostname !== ''
@@ -125,7 +128,7 @@ export default function AddAssetModal({ open, onClose, db, listId, onCreated }: 
 
   return (
     <Modal open={open} onClose={onClose} title="Add Asset">
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
         {/* Name */}
         <div className="space-y-1.5">
           <label className="block label-sm">
