@@ -179,7 +179,7 @@ struct AssetDetailView: View {
 
     // MARK: Actions
 
-    private func applyEdit(_ draft: AssetDraft) async {
+    private func applyEdit(_ draft: AssetDraft) async -> Bool {
         do {
             try await repo.updateAsset(id: asset.id, fields: AssetUpdate(
                 name: draft.name, ticker: draft.ticker, summary: draft.summary,
@@ -196,9 +196,11 @@ struct AssetDetailView: View {
             Haptics.success()
             toast.show("Asset updated", .success)
             onChanged()
+            return true
         } catch {
             Haptics.error()
             toast.show(error.localizedDescription, .error)
+            return false
         }
     }
 

@@ -21,7 +21,9 @@ struct AssetEditorSheet: View {
     }
 
     let mode: Mode
-    let onSave: (AssetDraft) async -> Void
+    /// Returns `true` on a successful save. On `false` the sheet stays open so
+    /// the user can retry without losing their input.
+    let onSave: (AssetDraft) async -> Bool
 
     @Environment(\.dismiss) private var dismiss
 
@@ -47,7 +49,7 @@ struct AssetEditorSheet: View {
         var resource: Resource
     }
 
-    init(mode: Mode, onSave: @escaping (AssetDraft) async -> Void) {
+    init(mode: Mode, onSave: @escaping (AssetDraft) async -> Bool) {
         self.mode = mode
         self.onSave = onSave
         switch mode {
@@ -220,7 +222,10 @@ struct AssetEditorSheet: View {
             resources: resources.map(\.resource),
             imageUrl: imageUrl.trimmingCharacters(in: .whitespaces)
         )
-        await onSave(draft)
-        dismiss()
+        if await onSave(draft) {
+            dismiss()
+        } else {
+            isSaving = false
+        }
     }
 }

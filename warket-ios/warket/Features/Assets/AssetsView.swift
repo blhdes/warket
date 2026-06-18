@@ -16,6 +16,7 @@ struct AssetsView: View {
     @State private var editing: Asset?
     @State private var pendingDelete: Asset?
     @State private var reloadToken = UUID()
+    @State private var reorderTask: Task<Void, Never>?
 
     private enum Phase: Equatable { case loading, loaded, failed(String) }
 
@@ -62,20 +63,22 @@ struct AssetsView: View {
             stateMessage(icon: "exclamationmark.triangle", title: "Couldn't load assets", detail: message, tint: Theme.error)
 
         case .loaded:
+            let tags = allTags
+            let filtered = filteredAssets
             VStack(spacing: 0) {
-                if !allTags.isEmpty { tagFilterBar }
-                if filteredAssets.isEmpty {
+                if !tags.isEmpty { tagFilterBar(tags) }
+                if filtered.isEmpty {
                     emptyState
                 } else {
-                    assetList
+                    assetList(filtered)
                 }
             }
         }
     }
 
-    private var assetList: some View {
+    private func assetList(_ filtered: [Asset]) -> some View {
         List {
-            ForEach(filteredAssets) { asset in
+            ForEach(filtered) { asset in
                 NavigationLink(value: asset) {
                     AssetRow(asset: asset)
                 }
@@ -97,10 +100,10 @@ struct AssetsView: View {
         .scrollContentBackground(.hidden)
     }
 
-    private var tagFilterBar: some View {
+    private func tagFilterBar(_ tags: [String]) -> some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
-                ForEach(allTags, id: \.self) { tag in
+                ForEach(tags, id: \.self) { tag in
                     Button {
                         activeTag = (activeTag == tag) ? nil : tag
                         Haptics.selection()
@@ -183,7 +186,7 @@ struct AssetsView: View {
         }
     }
 
-    private func createAsset(_ draft: AssetDraft) async {
+    private func createAsset(_ draft: AssetDraft) async -> Bool {
         do {
             try await repo.addAsset(
                 listId: list.id,
@@ -199,13 +202,15 @@ struct AssetsView: View {
             Haptics.success()
             toast.show("Asset added", .success)
             await load()
+            return true
         } catch {
             Haptics.error()
             toast.show(error.localizedDescription, .error)
+            return false
         }
     }
 
-    private func updateAsset(_ original: Asset, _ draft: AssetDraft) async {
+    private func updateAsset(_ original: Asset, _ draft: AssetDraft) async -> Bool {
         do {
             try await repo.updateAsset(id: original.id, fields: AssetUpdate(
                 name: draft.name, ticker: draft.ticker, summary: draft.summary,
@@ -215,9 +220,11 @@ struct AssetsView: View {
             Haptics.success()
             toast.show("Asset updated", .success)
             await load()
+            return true
         } catch {
             Haptics.error()
             toast.show(error.localizedDescription, .error)
+            return false
         }
     }
 
@@ -238,9 +245,13 @@ struct AssetsView: View {
         assets.move(fromOffsets: source, toOffset: destination)
         Haptics.impact(.light)
         let changes = assets.enumerated().map { PositionChange(id: $0.element.id, position: $0.offset) }
-        Task {
-            do { try await repo.updatePositions(table: "assets", changes: changes) }
-            catch { toast.show(error.localizedDescription, .error) }
+        reorderTask?.cancel()
+        reorderTask = Task {
+            do {
+                try await repo.updatePositions(table: "assets", changes: changes)
+            } catch {
+                if !Task.isCancelled { toast.show(error.localizedDescription, .error) }
+            }
         }
     }
 }

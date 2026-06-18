@@ -26,6 +26,7 @@ struct ListsView: View {
     @State private var showingCreate = false
     @State private var editingList: ListWithAssetCount?
     @State private var pendingDelete: ListWithAssetCount?
+    @State private var reorderTask: Task<Void, Never>?
 
     private enum Phase: Equatable { case loading, loaded, failed(String) }
 
@@ -89,31 +90,33 @@ struct ListsView: View {
             stateMessage(icon: "exclamationmark.triangle", title: "Couldn't load lists", detail: message, tint: Theme.error)
 
         case .loaded:
+            let tags = allTags
+            let filtered = filteredLists
             VStack(spacing: 0) {
-                if !allTags.isEmpty { tagFilterBar }
-                listOrGrid
+                if !tags.isEmpty { tagFilterBar(tags) }
+                listOrGrid(filtered)
             }
         }
     }
 
     @ViewBuilder
-    private var listOrGrid: some View {
-        if filteredLists.isEmpty {
+    private func listOrGrid(_ filtered: [ListWithAssetCount]) -> some View {
+        if filtered.isEmpty {
             if lists.isEmpty {
                 stateMessage(icon: "tray", title: "No lists yet", detail: "Tap + to create your first list.", tint: Theme.textTertiary)
             } else {
                 stateMessage(icon: "magnifyingglass", title: "No matches", detail: "Try a different search or tag.", tint: Theme.textTertiary)
             }
         } else if layout == .list {
-            listLayout
+            listLayout(filtered)
         } else {
-            gridLayout
+            gridLayout(filtered)
         }
     }
 
-    private var listLayout: some View {
+    private func listLayout(_ filtered: [ListWithAssetCount]) -> some View {
         List {
-            ForEach(filteredLists) { item in
+            ForEach(filtered) { item in
                 NavigationLink(value: item.list) {
                     ListRow(item: item)
                 }
@@ -135,10 +138,10 @@ struct ListsView: View {
         .scrollContentBackground(.hidden)
     }
 
-    private var gridLayout: some View {
+    private func gridLayout(_ filtered: [ListWithAssetCount]) -> some View {
         ScrollView {
             LazyVGrid(columns: columns, spacing: 12) {
-                ForEach(filteredLists) { item in
+                ForEach(filtered) { item in
                     NavigationLink(value: item.list) {
                         ListCard(item: item)
                     }
@@ -153,10 +156,10 @@ struct ListsView: View {
         }
     }
 
-    private var tagFilterBar: some View {
+    private func tagFilterBar(_ tags: [String]) -> some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
-                ForEach(allTags, id: \.self) { tag in
+                ForEach(tags, id: \.self) { tag in
                     Button {
                         activeTag = (activeTag == tag) ? nil : tag
                         Haptics.selection()
@@ -252,27 +255,31 @@ struct ListsView: View {
         }
     }
 
-    private func createList(name: String, tags: [String]) async {
+    private func createList(name: String, tags: [String]) async -> Bool {
         do {
             try await repo.createList(name: name, tags: tags, position: lists.count)
             Haptics.success()
             toast.show("List created", .success)
             await load()
+            return true
         } catch {
             Haptics.error()
             toast.show(error.localizedDescription, .error)
+            return false
         }
     }
 
-    private func updateList(_ item: ListWithAssetCount, name: String, tags: [String]) async {
+    private func updateList(_ item: ListWithAssetCount, name: String, tags: [String]) async -> Bool {
         do {
             try await repo.updateList(id: item.list.id, name: name, tags: tags)
             Haptics.success()
             toast.show("List updated", .success)
             await load()
+            return true
         } catch {
             Haptics.error()
             toast.show(error.localizedDescription, .error)
+            return false
         }
     }
 
@@ -293,9 +300,13 @@ struct ListsView: View {
         lists.move(fromOffsets: source, toOffset: destination)
         Haptics.impact(.light)
         let changes = lists.enumerated().map { PositionChange(id: $0.element.list.id, position: $0.offset) }
-        Task {
-            do { try await repo.updatePositions(table: "lists", changes: changes) }
-            catch { toast.show(error.localizedDescription, .error) }
+        reorderTask?.cancel()
+        reorderTask = Task {
+            do {
+                try await repo.updatePositions(table: "lists", changes: changes)
+            } catch {
+                if !Task.isCancelled { toast.show(error.localizedDescription, .error) }
+            }
         }
     }
 }

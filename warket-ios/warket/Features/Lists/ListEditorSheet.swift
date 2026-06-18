@@ -9,14 +9,16 @@ struct ListEditorSheet: View {
     }
 
     let mode: Mode
-    let onSave: (_ name: String, _ tags: [String]) async -> Void
+    /// Returns `true` on a successful save. On `false` the sheet stays open so
+    /// the user can retry without losing their input.
+    let onSave: (_ name: String, _ tags: [String]) async -> Bool
 
     @Environment(\.dismiss) private var dismiss
     @State private var name: String
     @State private var tags: [String]
     @State private var isSaving = false
 
-    init(mode: Mode, onSave: @escaping (String, [String]) async -> Void) {
+    init(mode: Mode, onSave: @escaping (String, [String]) async -> Bool) {
         self.mode = mode
         self.onSave = onSave
         switch mode {
@@ -66,7 +68,10 @@ struct ListEditorSheet: View {
 
     private func save() async {
         isSaving = true
-        await onSave(trimmedName, tags)
-        dismiss()
+        if await onSave(trimmedName, tags) {
+            dismiss()
+        } else {
+            isSaving = false
+        }
     }
 }
