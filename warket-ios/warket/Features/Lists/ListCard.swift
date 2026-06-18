@@ -35,10 +35,6 @@ struct ListCard: View {
         .padding(14)
         .frame(height: 124, alignment: .topLeading)
         .frame(maxWidth: .infinity)
-        .background(Theme.surface1, in: RoundedRectangle(cornerRadius: Theme.Radius.lg))
-        .overlay(
-            RoundedRectangle(cornerRadius: Theme.Radius.lg)
-                .stroke(Theme.borderDefault, lineWidth: 1)
-        )
+        .glassSurface(in: RoundedRectangle(cornerRadius: 14))
     }
 }

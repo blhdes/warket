@@ -22,7 +22,7 @@ struct AssetsView: View {
 
     var body: some View {
         ZStack {
-            Theme.surface0.ignoresSafeArea()
+            MarketPulseBackground()
             content
         }
         .navigationTitle(list.name)
@@ -82,8 +82,9 @@ struct AssetsView: View {
                 NavigationLink(value: asset) {
                     AssetRow(asset: asset)
                 }
-                .listRowBackground(Theme.surface1)
-                .listRowSeparatorTint(Theme.borderDefault)
+                .listRowBackground(glassRowBackground)
+                .listRowSeparator(.hidden)
+                .listRowInsets(EdgeInsets(top: 12, leading: 22, bottom: 12, trailing: 22))
                 .swipeActions(edge: .trailing) {
                     Button(role: .destructive) { pendingDelete = asset } label: {
                         Label("Delete", systemImage: "trash")
@@ -98,6 +99,15 @@ struct AssetsView: View {
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
+    }
+
+    /// Inset glass slab behind each asset row, matching the lists screen so the
+    /// drill-down keeps the same floating-card vocabulary over the mesh.
+    private var glassRowBackground: some View {
+        Color.clear
+            .glassSurface(in: RoundedRectangle(cornerRadius: 14))
+            .padding(.horizontal, 16)
+            .padding(.vertical, 3)
     }
 
     private func tagFilterBar(_ tags: [String]) -> some View {

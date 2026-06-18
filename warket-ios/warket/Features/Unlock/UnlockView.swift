@@ -5,58 +5,77 @@ import SwiftUI
 /// handed to the Session.
 struct UnlockView: View {
     @Environment(Session.self) private var session
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var phrase = ""
     @State private var remember = true
     @State private var errorMessage: String?
 
+    @State private var appeared = false
+    @State private var generateTick = 0
+
     var body: some View {
         ZStack {
-            Theme.surface0.ignoresSafeArea()
+            MarketPulseBackground()
 
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    header
-                    phraseField
-
-                    if let errorMessage {
-                        Text(errorMessage)
-                            .font(.footnote)
-                            .foregroundStyle(Theme.error)
+            GeometryReader { proxy in
+                ScrollView {
+                    VStack(spacing: 0) {
+                        Spacer(minLength: 48)
+                        cluster
+                        Spacer(minLength: 24)
                     }
-
-                    Button(action: generate) {
-                        Label("Generate new phrase", systemImage: "wand.and.stars")
-                            .font(.subheadline)
-                    }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(Theme.accent)
-
-                    Toggle("Keep me signed in", isOn: $remember)
-                        .tint(Theme.accent)
-                        .foregroundStyle(Theme.textSecondary)
-                        .font(.subheadline)
-
-                    accessButton
+                    .frame(minHeight: proxy.size.height, alignment: .center)
+                    .frame(maxWidth: 440)
+                    .frame(maxWidth: .infinity)
+                    .padding(.horizontal, 24)
                 }
-                .padding(24)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .scrollDismissesKeyboard(.interactively)
             }
-            .scrollDismissesKeyboard(.interactively)
+        }
+        .onAppear {
+            guard !appeared else { return }
+            if reduceMotion {
+                appeared = true
+            } else {
+                withAnimation(.smooth(duration: 0.6).delay(0.05)) { appeared = true }
+            }
         }
     }
 
+    private var cluster: some View {
+        VStack(spacing: 26) {
+            header
+
+            VStack(spacing: 14) {
+                phraseField
+                generateButton
+                if let errorMessage {
+                    Label(errorMessage, systemImage: "exclamationmark.triangle.fill")
+                        .font(.footnote)
+                        .foregroundStyle(Theme.error)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+
+            toggleRow
+            accessButton
+        }
+        .opacity(appeared ? 1 : 0)
+        .offset(y: appeared ? 0 : 14)
+    }
+
     private var header: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(spacing: 10) {
             Text("warket")
-                .font(.serif(52, relativeTo: .largeTitle))
+                .font(.serif(64, relativeTo: .largeTitle))
                 .foregroundStyle(Theme.textPrimary)
-            Text("Enter your 12-word phrase to open your vault.")
+            Text("Your private asset vault.")
                 .font(.subheadline)
                 .foregroundStyle(Theme.textSecondary)
         }
-        .padding(.top, 40)
-        .padding(.bottom, 8)
+        .multilineTextAlignment(.center)
+        .padding(.bottom, 4)
     }
 
     private var phraseField: some View {
@@ -67,12 +86,31 @@ struct UnlockView: View {
             .font(.mono(17, relativeTo: .body))
             .foregroundStyle(Theme.textPrimary)
             .lineLimit(3...6)
-            .padding(14)
-            .background(Theme.surface2, in: RoundedRectangle(cornerRadius: Theme.Radius.lg))
-            .overlay(
-                RoundedRectangle(cornerRadius: Theme.Radius.lg)
-                    .stroke(Theme.borderDefault, lineWidth: 1)
-            )
+            .padding(16)
+            .glassSurface(in: RoundedRectangle(cornerRadius: 16))
+    }
+
+    private var generateButton: some View {
+        Button(action: generate) {
+            Label("Generate new phrase", systemImage: "wand.and.stars")
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(Theme.accent)
+                .symbolEffect(.bounce, value: generateTick)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 9)
+                .glassSurface(in: Capsule(), tint: Theme.accent)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var toggleRow: some View {
+        Toggle("Keep me signed in", isOn: $remember)
+            .tint(Theme.accent)
+            .foregroundStyle(Theme.textSecondary)
+            .font(.subheadline)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .glassSurface(in: RoundedRectangle(cornerRadius: 16))
     }
 
     private var accessButton: some View {
@@ -80,15 +118,22 @@ struct UnlockView: View {
             Text("Access vault")
                 .font(.headline)
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
-                .background(
-                    canAccess ? Theme.accent : Theme.surface3,
-                    in: RoundedRectangle(cornerRadius: Theme.Radius.lg)
-                )
+                .padding(.vertical, 16)
                 .foregroundStyle(canAccess ? .white : Theme.textTertiary)
+                .background {
+                    Capsule().fill(
+                        canAccess
+                            ? AnyShapeStyle(LinearGradient(
+                                colors: [Theme.accent, Theme.accentHover],
+                                startPoint: .top, endPoint: .bottom))
+                            : AnyShapeStyle(Theme.surface3)
+                    )
+                }
+                .shadow(color: Theme.accent.opacity(canAccess ? 0.30 : 0), radius: 18, y: 8)
         }
+        .buttonStyle(.plain)
         .disabled(!canAccess)
-        .padding(.top, 4)
+        .animation(.snappy(duration: 0.25), value: canAccess)
     }
 
     private var canAccess: Bool {
@@ -98,6 +143,7 @@ struct UnlockView: View {
     private func generate() {
         phrase = SeedPhrase.generate()
         errorMessage = nil
+        generateTick += 1
     }
 
     private func access() {

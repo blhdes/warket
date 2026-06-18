@@ -42,7 +42,7 @@ struct ListsView: View {
 
     var body: some View {
         ZStack {
-            Theme.surface0.ignoresSafeArea()
+            MarketPulseBackground()
             content
         }
         .navigationTitle("Lists")
@@ -120,8 +120,9 @@ struct ListsView: View {
                 NavigationLink(value: item.list) {
                     ListRow(item: item)
                 }
-                .listRowBackground(Theme.surface1)
-                .listRowSeparatorTint(Theme.borderDefault)
+                .listRowBackground(glassRowBackground)
+                .listRowSeparator(.hidden)
+                .listRowInsets(EdgeInsets(top: 12, leading: 30, bottom: 12, trailing: 22))
                 .swipeActions(edge: .trailing) {
                     Button(role: .destructive) { pendingDelete = item } label: {
                         Label("Delete", systemImage: "trash")
@@ -136,6 +137,15 @@ struct ListsView: View {
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
+    }
+
+    /// Inset glass slab used as each list row's background, so rows read as cards
+    /// floating over the mesh with a hairline gap between them.
+    private var glassRowBackground: some View {
+        Color.clear
+            .glassSurface(in: RoundedRectangle(cornerRadius: 14))
+            .padding(.horizontal, 16)
+            .padding(.vertical, 3)
     }
 
     private func gridLayout(_ filtered: [ListWithAssetCount]) -> some View {
