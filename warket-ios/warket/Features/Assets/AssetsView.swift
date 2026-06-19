@@ -5,6 +5,7 @@ import SwiftUI
 struct AssetsView: View {
     let list: VaultList
     let repo: VaultRepository
+    var readOnly = false
     @Environment(ToastCenter.self) private var toast
 
     @State private var assets: [Asset] = []
@@ -32,7 +33,7 @@ struct AssetsView: View {
         .task(id: reloadToken) { await load() }
         .refreshable { await load() }
         .navigationDestination(for: Asset.self) { asset in
-            AssetDetailView(asset: asset, repo: repo) { reloadToken = UUID() }
+            AssetDetailView(asset: asset, repo: repo, readOnly: readOnly) { reloadToken = UUID() }
         }
         .sheet(isPresented: $showingCreate) {
             AssetEditorSheet(mode: .create) { draft in await createAsset(draft) }
@@ -86,16 +87,18 @@ struct AssetsView: View {
                 .listRowSeparator(.hidden)
                 .listRowInsets(EdgeInsets(top: 12, leading: 22, bottom: 12, trailing: 22))
                 .swipeActions(edge: .trailing) {
-                    Button(role: .destructive) { pendingDelete = asset } label: {
-                        Label("Delete", systemImage: "trash")
+                    if !readOnly {
+                        Button(role: .destructive) { pendingDelete = asset } label: {
+                            Label("Delete", systemImage: "trash")
+                        }
+                        Button { editing = asset } label: {
+                            Label("Edit", systemImage: "pencil")
+                        }
+                        .tint(Theme.accent)
                     }
-                    Button { editing = asset } label: {
-                        Label("Edit", systemImage: "pencil")
-                    }
-                    .tint(Theme.accent)
                 }
             }
-            .onMove(perform: isFiltered ? nil : move)
+            .onMove(perform: (readOnly || isFiltered) ? nil : move)
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
@@ -139,9 +142,11 @@ struct AssetsView: View {
 
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
-        ToolbarItem(placement: .topBarLeading) { EditButton() }
-        ToolbarItem(placement: .topBarTrailing) {
-            Button { showingCreate = true } label: { Image(systemName: "plus") }
+        if !readOnly {
+            ToolbarItem(placement: .topBarLeading) { EditButton() }
+            ToolbarItem(placement: .topBarTrailing) {
+                Button { showingCreate = true } label: { Image(systemName: "plus") }
+            }
         }
     }
 

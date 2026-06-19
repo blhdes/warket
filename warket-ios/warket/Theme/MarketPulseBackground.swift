@@ -12,9 +12,19 @@ struct MarketPulseBackground: View {
         ZStack {
             Theme.surface0
             mesh
-            Color.black.opacity(0.25)
+            scrim
         }
         .ignoresSafeArea()
+    }
+
+    /// Darken in dark mode for text contrast; a soft white veil in light mode so
+    /// the teal pools stay gentle instead of muddy.
+    private var scrim: Color {
+        Color(UIColor { traits in
+            traits.userInterfaceStyle == .dark
+                ? UIColor.black.withAlphaComponent(0.25)
+                : UIColor.white.withAlphaComponent(0.30)
+        })
     }
 
     @ViewBuilder
@@ -31,7 +41,7 @@ struct MarketPulseBackground: View {
             }
         } else {
             LinearGradient(
-                colors: [Theme.surface0, Color(hex: 0x123A37), Theme.surface1],
+                colors: [Theme.surface0, Color.adaptive(dark: 0x123A37, light: 0xC9E7E1), Theme.surface1],
                 startPoint: .top,
                 endPoint: .bottom
             )
@@ -42,9 +52,15 @@ struct MarketPulseBackground: View {
     /// animation IS this resting composition, so the Reduce-Motion freeze frame
     /// renders exactly the design reviewed by eye.
     private static let meshColors: [Color] = [
-        Theme.surface0,        Theme.surface1,        Theme.surface0,
-        Color(hex: 0x123A37),  Color(hex: 0x1C5F57),  Color(hex: 0x10302E),
-        Theme.surface0,        Color(hex: 0x14403B),  Theme.surface1,
+        Theme.surface0,
+        Theme.surface1,
+        Theme.surface0,
+        Color.adaptive(dark: 0x123A37, light: 0xCFE9E3),
+        Color.adaptive(dark: 0x1C5F57, light: 0xB7E0D7),
+        Color.adaptive(dark: 0x10302E, light: 0xD6ECE8),
+        Theme.surface0,
+        Color.adaptive(dark: 0x14403B, light: 0xCBE7E0),
+        Theme.surface1,
     ]
 
     /// 3×3 control grid. Corners are pinned; the center and the four edge-midpoints

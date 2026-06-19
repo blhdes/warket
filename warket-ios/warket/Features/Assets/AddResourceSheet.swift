@@ -19,20 +19,25 @@ struct AddResourceSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var url = ""
     @State private var title = ""
+    @State private var fetching = false
+    @State private var fetchTask: Task<Void, Never>?
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section("Link") {
-                    TextField("URL", text: $url)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .keyboardType(.URL)
-                    TextField("Title (optional)", text: $title)
+            ZStack {
+                MarketPulseBackground()
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 12) {
+                        linkCard
+                        Text("Paste a link — tap the arrow to pull in its title automatically.")
+                            .font(.footnote)
+                            .foregroundStyle(Theme.textSecondary)
+                            .padding(.horizontal, 4)
+                    }
+                    .padding(20)
                 }
+                .scrollDismissesKeyboard(.interactively)
             }
-            .scrollContentBackground(.hidden)
-            .background(Theme.surface0)
             .navigationTitle("Add Resource")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -50,6 +55,73 @@ struct AddResourceSheet: View {
                 }
             }
             .presentationDetents([.medium])
+        }
+    }
+
+    /// URL + optional title on one glass slab, the two fields split by a hairline
+    /// so they still read as a single "Link" group.
+    private var linkCard: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            TextField("URL", text: $url)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .keyboardType(.URL)
+                .submitLabel(.done)
+                .onSubmit { autofillTitle() }
+                .padding(.vertical, 14)
+
+            Divider().overlay(Theme.borderDefault)
+
+            HStack(spacing: 10) {
+                TextField("Title (optional)", text: $title)
+                fetchButton
+            }
+            .padding(.vertical, 14)
+        }
+        .foregroundStyle(Theme.textPrimary)
+        .padding(.horizontal, 16)
+        .glassSurface(in: RoundedRectangle(cornerRadius: 16))
+    }
+
+    @ViewBuilder
+    private var fetchButton: some View {
+        if fetching {
+            Image(systemName: "arrow.down.circle")
+                .symbolEffect(.variableColor.iterative, options: .repeating)
+                .foregroundStyle(Theme.accent)
+        } else if !url.trimmingCharacters(in: .whitespaces).isEmpty {
+            Button {
+                autofillTitle(force: true)
+            } label: {
+                Image(systemName: "arrow.down.circle")
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(Theme.accent)
+            .accessibilityLabel("Fetch title from link")
+        }
+    }
+
+    /// Fetch the page title for the entered URL. Auto-fill only overwrites an
+    /// empty title; the manual button (`force`) always replaces it. Single-flight:
+    /// a new request cancels the previous so an overlapping fetch can't clobber
+    /// the result or leave the spinner stuck.
+    private func autofillTitle(force: Bool = false) {
+        let trimmedURL = url.trimmingCharacters(in: .whitespaces)
+        guard !trimmedURL.isEmpty else { return }
+        if !force, !title.trimmingCharacters(in: .whitespaces).isEmpty { return }
+
+        fetchTask?.cancel()
+        fetchTask = Task { @MainActor in
+            fetching = true
+            let fetched = await TitleFetcher.fetch(trimmedURL)
+            if Task.isCancelled { return }
+            fetching = false
+
+            guard let fetched, !fetched.isEmpty else { return }
+            if force || title.trimmingCharacters(in: .whitespaces).isEmpty {
+                title = fetched
+                Haptics.selection()
+            }
         }
     }
 }
