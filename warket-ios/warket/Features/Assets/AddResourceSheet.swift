@@ -20,6 +20,7 @@ struct AddResourceSheet: View {
     @State private var url = ""
     @State private var title = ""
     @State private var fetching = false
+    @State private var fetchTask: Task<Void, Never>?
 
     var body: some View {
         NavigationStack {
@@ -30,14 +31,14 @@ struct AddResourceSheet: View {
                         .autocorrectionDisabled()
                         .keyboardType(.URL)
                         .submitLabel(.done)
-                        .onSubmit { Task { await autofillTitle() } }
+                        .onSubmit { autofillTitle() }
                     HStack {
                         TextField("Title (optional)", text: $title)
                         if fetching {
                             ProgressView().controlSize(.small)
                         } else if !url.trimmingCharacters(in: .whitespaces).isEmpty {
                             Button {
-                                Task { await autofillTitle(force: true) }
+                                autofillTitle(force: true)
                             } label: {
                                 Image(systemName: "arrow.down.circle")
                             }
@@ -71,20 +72,26 @@ struct AddResourceSheet: View {
     }
 
     /// Fetch the page title for the entered URL. Auto-fill only overwrites an
-    /// empty title; the manual button (`force`) always replaces it.
-    private func autofillTitle(force: Bool = false) async {
+    /// empty title; the manual button (`force`) always replaces it. Single-flight:
+    /// a new request cancels the previous so an overlapping fetch can't clobber
+    /// the result or leave the spinner stuck.
+    private func autofillTitle(force: Bool = false) {
         let trimmedURL = url.trimmingCharacters(in: .whitespaces)
         guard !trimmedURL.isEmpty else { return }
         if !force, !title.trimmingCharacters(in: .whitespaces).isEmpty { return }
 
-        fetching = true
-        let fetched = await TitleFetcher.fetch(trimmedURL)
-        fetching = false
+        fetchTask?.cancel()
+        fetchTask = Task { @MainActor in
+            fetching = true
+            let fetched = await TitleFetcher.fetch(trimmedURL)
+            if Task.isCancelled { return }
+            fetching = false
 
-        guard let fetched, !fetched.isEmpty else { return }
-        if force || title.trimmingCharacters(in: .whitespaces).isEmpty {
-            title = fetched
-            Haptics.selection()
+            guard let fetched, !fetched.isEmpty else { return }
+            if force || title.trimmingCharacters(in: .whitespaces).isEmpty {
+                title = fetched
+                Haptics.selection()
+            }
         }
     }
 }

@@ -206,21 +206,40 @@ final class VaultRepository {
             }
 
             guard !list.assets.isEmpty else { continue }
-            let existingAssets = try await fetchAssets(listId: listId)
-            var nextAssetPosition = (existingAssets.map(\.position).max() ?? -1) + 1
-            for asset in list.assets {
-                try await addAsset(
-                    listId: listId, name: asset.name, ticker: asset.ticker,
+            let base = (try await maxAssetPosition(listId: listId) ?? -1) + 1
+            let rows = list.assets.enumerated().map { offset, asset in
+                NewAsset(
+                    list_id: listId, name: asset.name, ticker: asset.ticker,
                     summary: asset.summary, description: asset.description,
                     tags: asset.tags, resources: asset.resources,
-                    imageUrl: asset.imageUrl, position: nextAssetPosition
+                    image_url: asset.imageUrl, position: base + offset
                 )
-                nextAssetPosition += 1
-                assetsImported += 1
             }
+            try await addAssets(rows)
+            assetsImported += rows.count
         }
 
         return (listsImported, assetsImported)
+    }
+
+    /// Highest `position` among a list's assets — a one-row read, so import can
+    /// append without pulling every asset's full row (mirrors the web).
+    private func maxAssetPosition(listId: String) async throws -> Int? {
+        let rows: [PositionRow] = try await client
+            .from("assets")
+            .select("position")
+            .eq("list_id", value: listId)
+            .order("position", ascending: false)
+            .limit(1)
+            .execute()
+            .value
+        return rows.first?.position
+    }
+
+    /// Insert many assets in one request (mirrors the web's per-list batch).
+    private func addAssets(_ rows: [NewAsset]) async throws {
+        guard !rows.isEmpty else { return }
+        try await client.from("assets").insert(rows).execute()
     }
 
     private func createListReturningId(name: String, tags: [String], position: Int) async throws -> String {
@@ -322,6 +341,10 @@ private struct PositionUpdate: Encodable {
 
 private struct CreatedListID: Decodable {
     let id: String
+}
+
+private struct PositionRow: Decodable {
+    let position: Int
 }
 
 private struct ShareUpsert: Encodable {
