@@ -24,33 +24,20 @@ struct AddResourceSheet: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section("Link") {
-                    TextField("URL", text: $url)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .keyboardType(.URL)
-                        .submitLabel(.done)
-                        .onSubmit { autofillTitle() }
-                    HStack {
-                        TextField("Title (optional)", text: $title)
-                        if fetching {
-                            ProgressView().controlSize(.small)
-                        } else if !url.trimmingCharacters(in: .whitespaces).isEmpty {
-                            Button {
-                                autofillTitle(force: true)
-                            } label: {
-                                Image(systemName: "arrow.down.circle")
-                            }
-                            .buttonStyle(.plain)
-                            .foregroundStyle(Theme.accent)
-                            .accessibilityLabel("Fetch title from link")
-                        }
+            ZStack {
+                MarketPulseBackground()
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 12) {
+                        linkCard
+                        Text("Paste a link — tap the arrow to pull in its title automatically.")
+                            .font(.footnote)
+                            .foregroundStyle(Theme.textSecondary)
+                            .padding(.horizontal, 4)
                     }
+                    .padding(20)
                 }
+                .scrollDismissesKeyboard(.interactively)
             }
-            .scrollContentBackground(.hidden)
-            .background(Theme.surface0)
             .navigationTitle("Add Resource")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -68,6 +55,49 @@ struct AddResourceSheet: View {
                 }
             }
             .presentationDetents([.medium])
+        }
+    }
+
+    /// URL + optional title on one glass slab, the two fields split by a hairline
+    /// so they still read as a single "Link" group.
+    private var linkCard: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            TextField("URL", text: $url)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .keyboardType(.URL)
+                .submitLabel(.done)
+                .onSubmit { autofillTitle() }
+                .padding(.vertical, 14)
+
+            Divider().overlay(Theme.borderDefault)
+
+            HStack(spacing: 10) {
+                TextField("Title (optional)", text: $title)
+                fetchButton
+            }
+            .padding(.vertical, 14)
+        }
+        .foregroundStyle(Theme.textPrimary)
+        .padding(.horizontal, 16)
+        .glassSurface(in: RoundedRectangle(cornerRadius: 16))
+    }
+
+    @ViewBuilder
+    private var fetchButton: some View {
+        if fetching {
+            Image(systemName: "arrow.down.circle")
+                .symbolEffect(.variableColor.iterative, options: .repeating)
+                .foregroundStyle(Theme.accent)
+        } else if !url.trimmingCharacters(in: .whitespaces).isEmpty {
+            Button {
+                autofillTitle(force: true)
+            } label: {
+                Image(systemName: "arrow.down.circle")
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(Theme.accent)
+            .accessibilityLabel("Fetch title from link")
         }
     }
 

@@ -23,18 +23,20 @@ struct AssetDetailView: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 22) {
-                header
-                if !asset.summary.isEmpty { summary }
-                if !asset.description.isEmpty { notes }
-                if !asset.tags.isEmpty { tags }
-                if !asset.resources.isEmpty { resources }
+        ZStack {
+            MarketPulseBackground()
+            ScrollView {
+                VStack(alignment: .leading, spacing: 22) {
+                    header
+                    if !asset.summary.isEmpty { summary }
+                    if !asset.description.isEmpty { notes }
+                    if !asset.tags.isEmpty { tags }
+                    if !asset.resources.isEmpty { resources }
+                }
+                .padding(20)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .padding(20)
-            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .background(Theme.surface0)
         .navigationTitle(asset.name)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -78,8 +80,8 @@ struct AssetDetailView: View {
                 }
                 .frame(maxWidth: .infinity)
                 .frame(height: 160)
-                .background(Theme.surface1)
-                .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.lg))
+                .glassSurface(in: RoundedRectangle(cornerRadius: 14))
+                .clipShape(RoundedRectangle(cornerRadius: 14))
             }
 
             HStack(alignment: .firstTextBaseline, spacing: 10) {
@@ -150,7 +152,7 @@ struct AssetDetailView: View {
                     .foregroundStyle(Theme.textTertiary)
             }
             .padding(12)
-            .background(Theme.surface1, in: RoundedRectangle(cornerRadius: Theme.Radius.md))
+            .glassSurface(in: RoundedRectangle(cornerRadius: 12), interactive: true)
         }
         .buttonStyle(.plain)
     }

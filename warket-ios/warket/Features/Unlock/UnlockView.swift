@@ -83,39 +83,89 @@ struct UnlockView: View {
 
     private var shareEntrySheet: some View {
         NavigationStack {
-            Form {
-                Section("Read-only share key") {
-                    TextField("Paste 64-character key", text: $shareKey, axis: .vertical)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .font(.mono(15, relativeTo: .body))
-                        .lineLimit(2...4)
+            ZStack {
+                MarketPulseBackground()
+                ScrollView {
+                    VStack(spacing: 20) {
+                        VStack(spacing: 10) {
+                            Image(systemName: "eye")
+                                .font(.largeTitle)
+                                .foregroundStyle(Theme.accent)
+                            Text("Open a read-only vault")
+                                .font(.headline)
+                                .foregroundStyle(Theme.textPrimary)
+                            Text("Paste a share key someone gave you. You'll see their vault but can't make changes.")
+                                .font(.footnote)
+                                .foregroundStyle(Theme.textSecondary)
+                                .multilineTextAlignment(.center)
+                        }
+                        .padding(.top, 8)
+
+                        TextField("Paste 64-character key", text: $shareKey, axis: .vertical)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                            .font(.mono(15, relativeTo: .body))
+                            .foregroundStyle(Theme.textPrimary)
+                            .lineLimit(2...4)
+                            .padding(16)
+                            .glassSurface(in: RoundedRectangle(cornerRadius: 16))
+
+                        if let shareError {
+                            Label(shareError, systemImage: "exclamationmark.triangle.fill")
+                                .font(.footnote)
+                                .foregroundStyle(Theme.error)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+
+                        openShareButton
+                    }
+                    .padding(24)
+                    .frame(maxWidth: 440)
+                    .frame(maxWidth: .infinity)
                 }
-                if let shareError {
-                    Label(shareError, systemImage: "exclamationmark.triangle.fill")
-                        .font(.footnote)
-                        .foregroundStyle(Theme.error)
-                }
+                .scrollDismissesKeyboard(.interactively)
             }
-            .scrollContentBackground(.hidden)
-            .background(Theme.surface0)
             .navigationTitle("Shared vault")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { showingShareEntry = false }
                 }
-                ToolbarItem(placement: .confirmationAction) {
-                    if resolvingShare {
-                        ProgressView()
-                    } else {
-                        Button("Open") { Task { await resolveShare() } }
-                            .disabled(shareKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                    }
+            }
+            .presentationDetents([.medium, .large])
+        }
+    }
+
+    private var openShareButton: some View {
+        Button { Task { await resolveShare() } } label: {
+            Group {
+                if resolvingShare {
+                    ProgressView().tint(.white)
+                } else {
+                    Text("Open vault").font(.headline)
                 }
             }
-            .presentationDetents([.medium])
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 16)
+            .foregroundStyle(canOpenShare ? .white : Theme.textTertiary)
+            .background {
+                Capsule().fill(
+                    canOpenShare
+                        ? AnyShapeStyle(LinearGradient(
+                            colors: [Theme.accent, Theme.accentHover],
+                            startPoint: .top, endPoint: .bottom))
+                        : AnyShapeStyle(Theme.surface3)
+                )
+            }
+            .shadow(color: Theme.accent.opacity(canOpenShare ? 0.30 : 0), radius: 18, y: 8)
         }
+        .buttonStyle(.plain)
+        .disabled(!canOpenShare || resolvingShare)
+        .animation(.snappy(duration: 0.25), value: canOpenShare)
+    }
+
+    private var canOpenShare: Bool {
+        !shareKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     private var header: some View {
