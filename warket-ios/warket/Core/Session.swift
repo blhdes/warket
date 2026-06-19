@@ -11,6 +11,8 @@ final class Session {
     private let rememberKey = "warket.remember"
 
     private(set) var vaultHash: String?
+    /// True when the open vault came from a share key — the UI hides all writes.
+    private(set) var readOnly = false
 
     init() {
         if defaults.bool(forKey: rememberKey),
@@ -20,6 +22,7 @@ final class Session {
     }
 
     func unlock(hash: String, remember: Bool) {
+        readOnly = false
         vaultHash = hash
         defaults.set(remember, forKey: rememberKey)
         if remember {
@@ -29,7 +32,17 @@ final class Session {
         }
     }
 
+    /// Open a vault read-only from an already-resolved share. Never persisted, so
+    /// a shared view is gone on next launch.
+    func openShared(hash: String) {
+        readOnly = true
+        vaultHash = hash
+        defaults.removeObject(forKey: hashKey)
+        defaults.set(false, forKey: rememberKey)
+    }
+
     func signOut() {
+        readOnly = false
         vaultHash = nil
         defaults.removeObject(forKey: hashKey)
         defaults.set(false, forKey: rememberKey)

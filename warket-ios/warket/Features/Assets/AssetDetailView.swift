@@ -5,6 +5,7 @@ import SwiftUI
 struct AssetDetailView: View {
     @State private var asset: Asset
     let repo: VaultRepository
+    let readOnly: Bool
     let onChanged: () -> Void
 
     @Environment(ToastCenter.self) private var toast
@@ -14,9 +15,10 @@ struct AssetDetailView: View {
     @State private var editing = false
     @State private var confirmingDelete = false
 
-    init(asset: Asset, repo: VaultRepository, onChanged: @escaping () -> Void) {
+    init(asset: Asset, repo: VaultRepository, readOnly: Bool = false, onChanged: @escaping () -> Void) {
         _asset = State(initialValue: asset)
         self.repo = repo
+        self.readOnly = readOnly
         self.onChanged = onChanged
     }
 
@@ -36,14 +38,16 @@ struct AssetDetailView: View {
         .navigationTitle(asset.name)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Menu {
-                    Button { editing = true } label: { Label("Edit", systemImage: "pencil") }
-                    Button(role: .destructive) { confirmingDelete = true } label: {
-                        Label("Delete", systemImage: "trash")
+            if !readOnly {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu {
+                        Button { editing = true } label: { Label("Edit", systemImage: "pencil") }
+                        Button(role: .destructive) { confirmingDelete = true } label: {
+                            Label("Delete", systemImage: "trash")
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
                     }
-                } label: {
-                    Image(systemName: "ellipsis.circle")
                 }
             }
         }

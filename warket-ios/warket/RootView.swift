@@ -17,7 +17,7 @@ struct RootView: View {
         Group {
             if let hash = session.vaultHash {
                 NavigationStack {
-                    ListsView(vaultHash: hash)
+                    ListsView(vaultHash: hash, readOnly: session.readOnly)
                 }
                 .id(hash) // fresh repository if a different vault is opened
             } else {

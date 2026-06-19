@@ -1,4 +1,6 @@
 import SwiftUI
+import UIKit
+import UniformTypeIdentifiers
 
 /// User-selectable layout for the lists screen, persisted across launches.
 enum ListLayout: String {
@@ -10,6 +12,7 @@ enum ListLayout: String {
 /// between a native List and the 2-column grid.
 struct ListsView: View {
     let vaultHash: String
+    let readOnly: Bool
     @Environment(Session.self) private var session
     @Environment(ToastCenter.self) private var toast
 
@@ -28,6 +31,10 @@ struct ListsView: View {
     @State private var pendingDelete: ListWithAssetCount?
     @State private var reorderTask: Task<Void, Never>?
 
+    @State private var exportDoc: JSONDocument?
+    @State private var showExporter = false
+    @State private var showImporter = false
+
     private enum Phase: Equatable { case loading, loaded, failed(String) }
 
     private let columns = [
@@ -35,8 +42,9 @@ struct ListsView: View {
         GridItem(.flexible(), spacing: 12),
     ]
 
-    init(vaultHash: String) {
+    init(vaultHash: String, readOnly: Bool = false) {
         self.vaultHash = vaultHash
+        self.readOnly = readOnly
         _repo = State(initialValue: VaultRepository(vaultHash: vaultHash))
     }
 
@@ -51,7 +59,7 @@ struct ListsView: View {
         .task { await load() }
         .refreshable { await load() }
         .navigationDestination(for: VaultList.self) { list in
-            AssetsView(list: list, repo: repo)
+            AssetsView(list: list, repo: repo, readOnly: readOnly)
         }
         .sheet(isPresented: $showingCreate) {
             ListEditorSheet(mode: .create) { name, tags in
@@ -75,6 +83,25 @@ struct ListsView: View {
                 Task { await delete(item) }
             }
             Button("Cancel", role: .cancel) {}
+        }
+        .fileExporter(
+            isPresented: $showExporter,
+            document: exportDoc,
+            contentType: .json,
+            defaultFilename: exportFilename
+        ) { result in
+            if case .failure(let error) = result {
+                toast.show(error.localizedDescription, .error)
+            } else {
+                Haptics.success()
+                toast.show("Vault exported", .success)
+            }
+        }
+        .fileImporter(
+            isPresented: $showImporter,
+            allowedContentTypes: [.json]
+        ) { result in
+            Task { await handleImport(result) }
         }
     }
 
@@ -124,16 +151,18 @@ struct ListsView: View {
                 .listRowSeparator(.hidden)
                 .listRowInsets(EdgeInsets(top: 12, leading: 30, bottom: 12, trailing: 22))
                 .swipeActions(edge: .trailing) {
-                    Button(role: .destructive) { pendingDelete = item } label: {
-                        Label("Delete", systemImage: "trash")
+                    if !readOnly {
+                        Button(role: .destructive) { pendingDelete = item } label: {
+                            Label("Delete", systemImage: "trash")
+                        }
+                        Button { editingList = item } label: {
+                            Label("Edit", systemImage: "pencil")
+                        }
+                        .tint(Theme.accent)
                     }
-                    Button { editingList = item } label: {
-                        Label("Edit", systemImage: "pencil")
-                    }
-                    .tint(Theme.accent)
                 }
             }
-            .onMove(perform: isFiltered ? nil : move)
+            .onMove(perform: (readOnly || isFiltered) ? nil : move)
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
@@ -152,13 +181,18 @@ struct ListsView: View {
         ScrollView {
             LazyVGrid(columns: columns, spacing: 12) {
                 ForEach(filtered) { item in
-                    NavigationLink(value: item.list) {
+                    let card = NavigationLink(value: item.list) {
                         ListCard(item: item)
                     }
                     .buttonStyle(.plain)
-                    .contextMenu {
-                        Button { editingList = item } label: { Label("Edit", systemImage: "pencil") }
-                        Button(role: .destructive) { pendingDelete = item } label: { Label("Delete", systemImage: "trash") }
+
+                    if readOnly {
+                        card
+                    } else {
+                        card.contextMenu {
+                            Button { editingList = item } label: { Label("Edit", systemImage: "pencil") }
+                            Button(role: .destructive) { pendingDelete = item } label: { Label("Delete", systemImage: "trash") }
+                        }
                     }
                 }
             }
@@ -186,11 +220,21 @@ struct ListsView: View {
 
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
-        if layout == .list {
+        if readOnly {
+            ToolbarItem(placement: .topBarLeading) {
+                Text("Read-only")
+                    .font(.caption2.weight(.semibold))
+                    .textCase(.uppercase)
+                    .tracking(0.5)
+                    .foregroundStyle(Theme.textTertiary)
+            }
+        } else if layout == .list {
             ToolbarItem(placement: .topBarLeading) { EditButton() }
         }
-        ToolbarItem(placement: .topBarTrailing) {
-            Button { showingCreate = true } label: { Image(systemName: "plus") }
+        if !readOnly {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button { showingCreate = true } label: { Image(systemName: "plus") }
+            }
         }
         ToolbarItem(placement: .topBarTrailing) {
             Menu {
@@ -199,8 +243,21 @@ struct ListsView: View {
                     Label("Grid", systemImage: "square.grid.2x2").tag(ListLayout.grid)
                 }
                 Divider()
+                Button { Task { await prepareExport() } } label: {
+                    Label("Export vault", systemImage: "square.and.arrow.up")
+                }
+                if !readOnly {
+                    Button { showImporter = true } label: {
+                        Label("Import vault", systemImage: "square.and.arrow.down")
+                    }
+                    Button { Task { await shareVault() } } label: {
+                        Label("Share (read-only)", systemImage: "person.crop.circle.badge.plus")
+                    }
+                }
+                Divider()
                 Button(role: .destructive) { session.signOut() } label: {
-                    Label("Lock vault", systemImage: "lock.fill")
+                    Label(readOnly ? "Exit shared vault" : "Lock vault",
+                          systemImage: readOnly ? "xmark.circle" : "lock.fill")
                 }
             } label: {
                 Image(systemName: "ellipsis.circle")
@@ -317,6 +374,73 @@ struct ListsView: View {
             } catch {
                 if !Task.isCancelled { toast.show(error.localizedDescription, .error) }
             }
+        }
+    }
+
+    // MARK: - Export / Import
+
+    private var exportFilename: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        return "warket-export-\(formatter.string(from: Date()))"
+    }
+
+    private func prepareExport() async {
+        do {
+            let export = try await repo.exportVault()
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = [.prettyPrinted, .withoutEscapingSlashes]
+            exportDoc = JSONDocument(data: try encoder.encode(export))
+            showExporter = true
+        } catch {
+            Haptics.error()
+            toast.show(error.localizedDescription, .error)
+        }
+    }
+
+    private func handleImport(_ result: Result<URL, Error>) async {
+        let url: URL
+        switch result {
+        case .success(let picked): url = picked
+        case .failure(let error):
+            toast.show(error.localizedDescription, .error)
+            return
+        }
+
+        let scoped = url.startAccessingSecurityScopedResource()
+        defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+
+        do {
+            let data = try Data(contentsOf: url)
+            let decoded = try JSONDecoder().decode(VaultExport.self, from: data)
+            if let message = VaultExport.validate(decoded) {
+                toast.show(message, .error)
+                return
+            }
+            let summary = try await repo.importVault(decoded)
+            Haptics.success()
+            toast.show("Imported \(summary.lists) lists, \(summary.assets) assets", .success)
+            await load()
+        } catch is DecodingError {
+            Haptics.error()
+            toast.show("Invalid or unrecognized file", .error)
+        } catch {
+            Haptics.error()
+            toast.show(error.localizedDescription, .error)
+        }
+    }
+
+    /// Create/refresh a read-only share key and copy it to the clipboard, so it
+    /// can be pasted into another device's "Open a shared vault" field.
+    private func shareVault() async {
+        do {
+            let key = try await repo.upsertShare()
+            UIPasteboard.general.string = key
+            Haptics.success()
+            toast.show("Share key copied to clipboard", .success)
+        } catch {
+            Haptics.error()
+            toast.show(error.localizedDescription, .error)
         }
     }
 }

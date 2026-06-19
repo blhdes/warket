@@ -19,6 +19,7 @@ struct AddResourceSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var url = ""
     @State private var title = ""
+    @State private var fetching = false
 
     var body: some View {
         NavigationStack {
@@ -28,7 +29,23 @@ struct AddResourceSheet: View {
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
                         .keyboardType(.URL)
-                    TextField("Title (optional)", text: $title)
+                        .submitLabel(.done)
+                        .onSubmit { Task { await autofillTitle() } }
+                    HStack {
+                        TextField("Title (optional)", text: $title)
+                        if fetching {
+                            ProgressView().controlSize(.small)
+                        } else if !url.trimmingCharacters(in: .whitespaces).isEmpty {
+                            Button {
+                                Task { await autofillTitle(force: true) }
+                            } label: {
+                                Image(systemName: "arrow.down.circle")
+                            }
+                            .buttonStyle(.plain)
+                            .foregroundStyle(Theme.accent)
+                            .accessibilityLabel("Fetch title from link")
+                        }
+                    }
                 }
             }
             .scrollContentBackground(.hidden)
@@ -50,6 +67,24 @@ struct AddResourceSheet: View {
                 }
             }
             .presentationDetents([.medium])
+        }
+    }
+
+    /// Fetch the page title for the entered URL. Auto-fill only overwrites an
+    /// empty title; the manual button (`force`) always replaces it.
+    private func autofillTitle(force: Bool = false) async {
+        let trimmedURL = url.trimmingCharacters(in: .whitespaces)
+        guard !trimmedURL.isEmpty else { return }
+        if !force, !title.trimmingCharacters(in: .whitespaces).isEmpty { return }
+
+        fetching = true
+        let fetched = await TitleFetcher.fetch(trimmedURL)
+        fetching = false
+
+        guard let fetched, !fetched.isEmpty else { return }
+        if force || title.trimmingCharacters(in: .whitespaces).isEmpty {
+            title = fetched
+            Haptics.selection()
         }
     }
 }

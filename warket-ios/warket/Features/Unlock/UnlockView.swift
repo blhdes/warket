@@ -14,6 +14,11 @@ struct UnlockView: View {
     @State private var appeared = false
     @State private var generateTick = 0
 
+    @State private var showingShareEntry = false
+    @State private var shareKey = ""
+    @State private var resolvingShare = false
+    @State private var shareError: String?
+
     var body: some View {
         ZStack {
             MarketPulseBackground()
@@ -41,6 +46,7 @@ struct UnlockView: View {
                 withAnimation(.smooth(duration: 0.6).delay(0.05)) { appeared = true }
             }
         }
+        .sheet(isPresented: $showingShareEntry) { shareEntrySheet }
     }
 
     private var cluster: some View {
@@ -60,9 +66,56 @@ struct UnlockView: View {
 
             toggleRow
             accessButton
+            sharedVaultButton
         }
         .opacity(appeared ? 1 : 0)
         .offset(y: appeared ? 0 : 14)
+    }
+
+    private var sharedVaultButton: some View {
+        Button { showingShareEntry = true } label: {
+            Label("Open a shared vault", systemImage: "eye")
+                .font(.subheadline)
+                .foregroundStyle(Theme.textSecondary)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var shareEntrySheet: some View {
+        NavigationStack {
+            Form {
+                Section("Read-only share key") {
+                    TextField("Paste 64-character key", text: $shareKey, axis: .vertical)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .font(.mono(15, relativeTo: .body))
+                        .lineLimit(2...4)
+                }
+                if let shareError {
+                    Label(shareError, systemImage: "exclamationmark.triangle.fill")
+                        .font(.footnote)
+                        .foregroundStyle(Theme.error)
+                }
+            }
+            .scrollContentBackground(.hidden)
+            .background(Theme.surface0)
+            .navigationTitle("Shared vault")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { showingShareEntry = false }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    if resolvingShare {
+                        ProgressView()
+                    } else {
+                        Button("Open") { Task { await resolveShare() } }
+                            .disabled(shareKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    }
+                }
+            }
+            .presentationDetents([.medium])
+        }
     }
 
     private var header: some View {
@@ -154,10 +207,30 @@ struct UnlockView: View {
             errorMessage = error.localizedDescription
         }
     }
+
+    private func resolveShare() async {
+        let key = shareKey.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !key.isEmpty else { return }
+        shareError = nil
+        resolvingShare = true
+        defer { resolvingShare = false }
+        do {
+            guard let vaultHash = try await ShareResolver.resolve(shareHash: key) else {
+                shareError = "Invalid or expired share key."
+                Haptics.error()
+                return
+            }
+            Haptics.success()
+            showingShareEntry = false
+            session.openShared(hash: vaultHash)
+        } catch {
+            shareError = error.localizedDescription
+            Haptics.error()
+        }
+    }
 }
 
 #Preview {
     UnlockView()
         .environment(Session())
-        .preferredColorScheme(.dark)
 }
