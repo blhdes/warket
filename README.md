@@ -2,7 +2,9 @@
 
 **A secure, seed-based asset vault for organizing and tracking financial assets with privacy at its core.**
 
-> Two clients, one Supabase backend: this **web app** (React, documented below) and a **native iOS app** in [`warket-ios/`](#native-ios-app) (Swift/SwiftUI).
+**Live:** [asset-cafe.vercel.app](https://asset-cafe.vercel.app/)
+
+> Two clients, one Supabase backend: this **web app** (React, documented below, deployed above) and a **native iOS app** in [`warket-ios/`](#native-ios-app) (Swift/SwiftUI).
 
 ---
 
