@@ -2,6 +2,8 @@
 
 **A secure, seed-based asset vault for organizing and tracking financial assets with privacy at its core.**
 
+> Two clients, one Supabase backend: this **web app** (React, documented below) and a **native iOS app** in [`warket-ios/`](#native-ios-app) (Swift/SwiftUI).
+
 ---
 
 ## Overview
@@ -263,6 +265,31 @@ warket/
 ├── vite.config.ts
 └── README.md
 ```
+
+---
+
+## Native iOS App
+
+A native **Swift/SwiftUI** port lives alongside the web app in `warket-ios/` (Xcode project `warket.xcodeproj`, bundle id `com.blhdes.warket`). Same Supabase project, same seed-phrase vault model — the native app talks to the identical backend so a vault opens on both.
+
+```
+warket-ios/warket/
+├── Core/          — vault/session logic, ShareResolver, VaultTransfer (JSON export/import), TitleFetcher
+├── Features/
+│   ├── Unlock/    — seed-phrase entry, generate/paste, shared-vault entry sheet
+│   ├── Lists/     — list grid, share/export/import actions
+│   └── Assets/    — asset detail, add-resource sheet
+├── Models/
+├── Theme/         — Liquid-Glass-over-mesh visual language, system-adaptive light/dark tokens
+└── Components/
+```
+
+**Shipped so far:**
+- **MVP** — vault unlock (generate/paste seed phrase), list + asset CRUD, matching the web app's core flow.
+- **Liquid Glass redesign** — UI rebuilt around Liquid Glass surfaces over an animated mesh background.
+- **Web parity pass** — read-only sharing (`ShareResolver`, mirrors the web app's `resolveShareKey`), JSON export/import (`VaultTransfer`, byte-compatible with the web app's export format), system-adaptive theme (follows `UITraitCollection.userInterfaceStyle` — no manual toggle yet, unlike the web app's switch), and resource-title auto-fetch (`TitleFetcher`: direct `URLSession` fetch, no CORS restriction on native, with `api.microlink.io` as a fallback for JS-rendered pages).
+
+Open it with `cd warket-ios && open warket.xcodeproj`.
 
 ---
 
