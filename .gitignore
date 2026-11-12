@@ -28,3 +28,10 @@ dist-ssr
 # Capacitor native projects
 /android
 /ios
+
+# Cloudflare server: local database and state, generated types, local secrets,
+# and old-database exports used during the move (they contain vault keys)
+.wrangler
+.dev.vars
+server/worker-configuration.d.ts
+server/.migration

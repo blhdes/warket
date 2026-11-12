@@ -1,0 +1,23 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "warket-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-11-10",
+  // Invocation logs are off on purpose: requests carry the vault key in a header.
+  "observability": { "enabled": true, "logs": { "invocation_logs": false } },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "warket",
+      // The real database on Cloudflare, created on 12/11/2026 and stored inside the EU.
+      "database_id": "1620e105-af6f-4847-81f1-97083f53d5c8",
+      "migrations_dir": "migrations"
+    }
+  ],
+  // Flood protection, counted per visitor address. Ids must differ from the owner's other project (1001).
+  "ratelimits": [
+    { "name": "API_LIMITER", "namespace_id": "2001", "simple": { "limit": 300, "period": 60 } },
+    { "name": "WRITE_LIMITER", "namespace_id": "2002", "simple": { "limit": 60, "period": 60 } }
+  ],
+  "vars": { "ALLOWED_ORIGINS": "https://asset-cafe.vercel.app,http://localhost:5173" }
+}
