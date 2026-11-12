@@ -156,6 +156,24 @@ describe('deriveShareHash – domain separation', () => {
   })
 })
 
+// ─── Fixed test vector (shared with iOS) ─────────────────────────────────────
+
+describe('hash recipe – fixed test vector', () => {
+  // Public phrase. Never keep real data in this vault. iOS tests use the same values,
+  // so a change here means both apps would open different vaults for the same words.
+  const MESSY_PHRASE = '  Legal  Winner THANK year wave sausage worth useful legal winner thank yellow  '
+  const VAULT_HASH = 'ecb0e7ba498c5920991f0b3483e91f7abafa9ecc6bd82a9a51494589592b1a8f'
+  const SHARE_HASH = '4aedbd98322b258ec221d52e62bed851cd76131c7e9452e125eaeecd169c8e7f'
+
+  it('hashSeedPhrase gives the known vault hash', async () => {
+    expect(await hashSeedPhrase(MESSY_PHRASE)).toBe(VAULT_HASH)
+  })
+
+  it('deriveShareHash gives the known share hash', async () => {
+    expect(await deriveShareHash(VAULT_HASH)).toBe(SHARE_HASH)
+  })
+})
+
 // ─── generateSeedPhrase ───────────────────────────────────────────────────────
 
 describe('generateSeedPhrase', () => {
