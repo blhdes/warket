@@ -51,6 +51,9 @@ export default function VaultPage() {
     sessionStorage.removeItem('vault_hash')
     localStorage.removeItem('vault_hash_persistent')
     localStorage.removeItem('vault_remember')
+    if ('caches' in window) {
+      caches.delete('supabase-api').catch(e => console.error('Could not clear cached vault data on lock', e))
+    }
     navigate('/', { replace: true })
   }
 
