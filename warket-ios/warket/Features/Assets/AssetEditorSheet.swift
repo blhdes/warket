@@ -117,12 +117,13 @@ struct AssetEditorSheet: View {
             TextField("Short summary", text: $summary, axis: .vertical)
                 .lineLimit(2...4)
                 .onChange(of: summary) { _, value in
-                    if value.count > 250 { summary = String(value.prefix(250)) }
+                    let clamped = Asset.clampSummary(value)
+                    if clamped != value { summary = clamped }
                 }
         } header: {
             Text("Summary")
         } footer: {
-            Text("\(summary.count)/250")
+            Text("\(summary.unicodeScalars.count)/\(Asset.summaryLimit)")
         }
     }
 

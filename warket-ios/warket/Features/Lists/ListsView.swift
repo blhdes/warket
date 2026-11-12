@@ -114,7 +114,13 @@ struct ListsView: View {
             ProgressView().tint(Theme.accent)
 
         case .failed(let message):
-            stateMessage(icon: "exclamationmark.triangle", title: "Couldn't load lists", detail: message, tint: Theme.error)
+            StateMessage(
+                icon: "exclamationmark.triangle", title: "Couldn't load lists", detail: message,
+                tint: Theme.error, actionTitle: "Try again"
+            ) {
+                phase = .loading
+                Task { await load() }
+            }
 
         case .loaded:
             let tags = allTags
@@ -130,9 +136,9 @@ struct ListsView: View {
     private func listOrGrid(_ filtered: [ListWithAssetCount]) -> some View {
         if filtered.isEmpty {
             if lists.isEmpty {
-                stateMessage(icon: "tray", title: "No lists yet", detail: "Tap + to create your first list.", tint: Theme.textTertiary)
+                StateMessage(icon: "tray", title: "No lists yet", detail: "Tap + to create your first list.", tint: Theme.textTertiary)
             } else {
-                stateMessage(icon: "magnifyingglass", title: "No matches", detail: "Try a different search or tag.", tint: Theme.textTertiary)
+                StateMessage(icon: "magnifyingglass", title: "No matches", detail: "Try a different search or tag.", tint: Theme.textTertiary)
             }
         } else if layout == .list {
             listLayout(filtered)
@@ -265,16 +271,6 @@ struct ListsView: View {
         }
     }
 
-    private func stateMessage(icon: String, title: String, detail: String, tint: Color) -> some View {
-        VStack(spacing: 10) {
-            Image(systemName: icon).font(.largeTitle).foregroundStyle(tint)
-            Text(title).font(.headline).foregroundStyle(Theme.textPrimary)
-            Text(detail).font(.subheadline).foregroundStyle(Theme.textSecondary).multilineTextAlignment(.center)
-        }
-        .padding(32)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
     // MARK: - Derived
 
     private var isFiltered: Bool {
@@ -381,6 +377,9 @@ struct ListsView: View {
 
     private var exportFilename: String {
         let formatter = DateFormatter()
+        // Fixed locale and calendar, so a phone set to e.g. the Buddhist calendar still gets 2026, not 2569.
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.calendar = Calendar(identifier: .gregorian)
         formatter.dateFormat = "yyyy-MM-dd"
         return "warket-export-\(formatter.string(from: Date()))"
     }

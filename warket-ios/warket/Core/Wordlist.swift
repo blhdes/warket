@@ -1,4 +1,5 @@
-// Auto-generated from src/features/auth/wordlist.ts — do not edit by hand.
+// Generated from src/features/auth/wordlist.ts, then the repeated "battlement" and
+// "befuddle" were removed (532 unique words; the web copy still has the repeats).
 // Used only to generate new seed phrases (the Generate button). The exact
 // contents are NOT part of hash parity; only the hashing algorithm is.
 enum Wordlist {
@@ -360,7 +361,6 @@ enum Wordlist {
         "battlement",
         "battledore",
         "battlefront",
-        "battlement",
         "battles",
         "battleship",
         "batty",
@@ -476,7 +476,6 @@ enum Wordlist {
         "beforehand",
         "befoul",
         "befriend",
-        "befuddle",
         "befuddle",
         "befuddles",
         "beg",

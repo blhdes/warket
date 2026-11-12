@@ -27,8 +27,10 @@ struct VaultExport: Codable {
                 if asset.name.trimmingCharacters(in: .whitespaces).isEmpty {
                     return "List \"\(list.name)\", asset \(j + 1): missing or empty \"name\""
                 }
-                if asset.ticker.trimmingCharacters(in: .whitespaces).isEmpty {
-                    return "List \"\(list.name)\", asset \"\(asset.name)\": missing or empty \"ticker\""
+                // An empty ticker is allowed (decision D3), so every backup restores.
+                // Unicode scalars match how the database counts characters.
+                if asset.summary.unicodeScalars.count > Asset.summaryLimit {
+                    return "List \"\(list.name)\", asset \"\(asset.name)\": summary is longer than \(Asset.summaryLimit) characters"
                 }
             }
         }

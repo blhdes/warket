@@ -300,6 +300,24 @@ private struct ListCountRow: Decodable {
 
     struct CountRow: Decodable { let count: Int }
 
+    enum CodingKeys: String, CodingKey {
+        case id, vault_hash, name, tags, position, created_at, updated_at, assets
+    }
+
+    /// Only `id` is required. Missing or null columns fall back to empty values
+    /// so one odd list row never stops the whole vault from loading.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(String.self, forKey: .id)
+        vault_hash = try c.decodeIfPresent(String.self, forKey: .vault_hash) ?? ""
+        name = try c.decodeIfPresent(String.self, forKey: .name) ?? ""
+        tags = try c.decodeIfPresent([String].self, forKey: .tags) ?? []
+        position = try c.decodeIfPresent(Int.self, forKey: .position) ?? 0
+        created_at = try c.decodeIfPresent(String.self, forKey: .created_at) ?? ""
+        updated_at = try c.decodeIfPresent(String.self, forKey: .updated_at) ?? ""
+        assets = try c.decodeIfPresent([CountRow].self, forKey: .assets)
+    }
+
     var asListWithCount: ListWithAssetCount {
         ListWithAssetCount(
             list: VaultList(

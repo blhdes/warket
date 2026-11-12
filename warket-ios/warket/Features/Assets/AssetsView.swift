@@ -61,7 +61,13 @@ struct AssetsView: View {
             ProgressView().tint(Theme.accent)
 
         case .failed(let message):
-            stateMessage(icon: "exclamationmark.triangle", title: "Couldn't load assets", detail: message, tint: Theme.error)
+            StateMessage(
+                icon: "exclamationmark.triangle", title: "Couldn't load assets", detail: message,
+                tint: Theme.error, actionTitle: "Try again"
+            ) {
+                phase = .loading
+                Task { await load() }
+            }
 
         case .loaded:
             let tags = allTags
@@ -134,9 +140,9 @@ struct AssetsView: View {
     @ViewBuilder
     private var emptyState: some View {
         if assets.isEmpty {
-            stateMessage(icon: "tray", title: "No assets yet", detail: "Tap + to add your first asset.", tint: Theme.textTertiary)
+            StateMessage(icon: "tray", title: "No assets yet", detail: "Tap + to add your first asset.", tint: Theme.textTertiary)
         } else {
-            stateMessage(icon: "magnifyingglass", title: "No matches", detail: "Try a different search or tag.", tint: Theme.textTertiary)
+            StateMessage(icon: "magnifyingglass", title: "No matches", detail: "Try a different search or tag.", tint: Theme.textTertiary)
         }
     }
 
@@ -148,16 +154,6 @@ struct AssetsView: View {
                 Button { showingCreate = true } label: { Image(systemName: "plus") }
             }
         }
-    }
-
-    private func stateMessage(icon: String, title: String, detail: String, tint: Color) -> some View {
-        VStack(spacing: 10) {
-            Image(systemName: icon).font(.largeTitle).foregroundStyle(tint)
-            Text(title).font(.headline).foregroundStyle(Theme.textPrimary)
-            Text(detail).font(.subheadline).foregroundStyle(Theme.textSecondary).multilineTextAlignment(.center)
-        }
-        .padding(32)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     // MARK: - Derived
