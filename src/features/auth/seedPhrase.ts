@@ -5,9 +5,13 @@ import { WORDLIST } from './wordlist'
  */
 export function generateSeedPhrase(): string {
   const words: string[] = []
-  for (let i = 0; i < 12; i++) {
-    const randomIndex = Math.floor(Math.random() * WORDLIST.length)
-    words.push(WORDLIST[randomIndex])
+  // Reject values above the largest multiple of the list size so every word is equally likely.
+  const limit = Math.floor(0x100000000 / WORDLIST.length) * WORDLIST.length
+  const buffer = new Uint32Array(1)
+  while (words.length < 12) {
+    crypto.getRandomValues(buffer)
+    if (buffer[0] >= limit) continue
+    words.push(WORDLIST[buffer[0] % WORDLIST.length])
   }
   return words.join(' ')
 }
