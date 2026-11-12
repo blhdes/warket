@@ -263,7 +263,7 @@ All calls are no-ops on web due to the `isNativePlatform()` guard.
 ## Folder structure after `cap add`
 
 ```
-asset.cafe/
+warket/
 ├── android/              ← gitignored
 ├── ios/                  ← gitignored
 ├── public/

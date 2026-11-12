@@ -1,5 +1,5 @@
 -- ============================================================
--- asset-cafe: unified schema
+-- warket: unified schema
 -- (consolidates all migrations into a single idempotent file)
 -- ============================================================
 
