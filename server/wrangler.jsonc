@@ -3,6 +3,10 @@
   "name": "warket-api",
   "main": "src/index.ts",
   "compatibility_date": "2026-11-10",
+  // Public address https://warket-api.alee-b44.workers.dev until a custom domain (plan D16).
+  // No preview URLs: every uploaded version would get its own extra public address.
+  "workers_dev": true,
+  "preview_urls": false,
   // Invocation logs are off on purpose: requests carry the vault key in a header.
   "observability": { "enabled": true, "logs": { "invocation_logs": false } },
   "d1_databases": [
