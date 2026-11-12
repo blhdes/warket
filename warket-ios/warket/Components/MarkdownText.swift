@@ -151,6 +151,7 @@ struct MarkdownText: View {
             }
         }
         .tint(Theme.accent) // link color
+        .environment(\.openURL, OpenURLAction { $0.isWebLink ? .systemAction : .discarded })
     }
 
     @ViewBuilder

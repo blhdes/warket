@@ -132,7 +132,11 @@ struct AssetDetailView: View {
 
     private func resourceRow(_ resource: Resource) -> some View {
         Button {
-            if let url = URL(string: resource.url) { openURL(url) }
+            guard let url = URL(string: resource.url), url.isWebLink else {
+                toast.show("Only web links (http or https) can be opened", .error)
+                return
+            }
+            openURL(url)
         } label: {
             HStack(spacing: 12) {
                 favicon(resource.favicon)

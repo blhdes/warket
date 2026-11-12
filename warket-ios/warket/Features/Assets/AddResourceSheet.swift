@@ -51,11 +51,22 @@ struct AddResourceSheet: View {
                         Haptics.selection()
                         dismiss()
                     }
-                    .disabled(url.trimmingCharacters(in: .whitespaces).isEmpty)
+                    .disabled(!isValidLink)
                 }
             }
             .presentationDetents([.medium])
         }
+    }
+
+    /// True when the text, after `Resource.make` adds https:// if needed, is a web
+    /// address with a real host name (so "hello" or "tel:123" can't be saved as links).
+    private var isValidLink: Bool {
+        let candidate = Resource.make(title: "", url: url).url
+        guard !candidate.contains(where: \.isWhitespace),
+              let parsed = URL(string: candidate), parsed.isWebLink,
+              let host = parsed.host(), host.contains(".")
+        else { return false }
+        return true
     }
 
     /// URL + optional title on one glass slab, the two fields split by a hairline
