@@ -2,14 +2,9 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Asset } from '../../lib/types'
-import { marked } from 'marked'
+import { renderMarkdown } from '../../lib/markdown'
 import { toast } from '../../components/Toast'
 import MarkdownEditor from '../../components/MarkdownEditor'
-
-marked.setOptions({
-  breaks: true,
-  gfm: true,
-})
 
 interface Props {
   open: boolean
@@ -202,7 +197,7 @@ export default function DescriptionModal({ open, onClose, asset, db, onUpdate, r
     setEditing(false)
   }
 
-  const renderedHtml = marked.parse(asset.description ?? '') as string
+  const renderedHtml = editing ? '' : renderMarkdown(asset.description ?? '')
 
   return createPortal(
     <div
