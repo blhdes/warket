@@ -4,22 +4,22 @@
 
 **Live:** [asset-cafe.vercel.app](https://asset-cafe.vercel.app/)
 
-> Two clients, one Supabase backend: this **web app** (React, documented below, deployed above) and a **native iOS app** in [`warket-ios/`](#native-ios-app) (Swift/SwiftUI).
+> Two clients, one server: this **web app** (React, documented below, deployed above) and a **native iOS app** in [`warket-ios/`](#native-ios-app) (Swift/SwiftUI). Both talk to the warket server in [`server/`](server/), a Cloudflare Worker with a D1 database.
 
 ---
 
 ## Overview
 
-warket is a privacy-first web application for managing curated lists of financial assets (stocks, crypto, real estate, etc.). All data is encrypted and isolated per user using a **seed phrase-based vault system** — no accounts, no emails, just a 12-word phrase that unlocks your personal database.
+warket is a privacy-first web application for managing curated lists of financial assets (stocks, crypto, real estate, etc.). Each vault's data is kept apart on the server using a **seed phrase-based vault system**. No accounts, no emails: just a 12-word phrase that unlocks your vault.
 
 ### Key Features
 
-- **Seed-phrase authentication**: Generate a 12-word BIP39 seed phrase. Your vault is deterministically derived from its hash.
-- **Zero backend storage of credentials**: The seed phrase is hashed client-side and never transmitted. Your vault hash is your database ID.
-- **Supabase multi-tenancy**: Each vault is an isolated partition in a shared Supabase database.
-- **Read-only shared vaults**: Generate a cryptographic share key from your vault hash to give anyone read-only access — no seed phrase exposed. Viewers can browse and export, but cannot create, edit, or delete.
+- **Seed-phrase authentication**: Generate a 12-word phrase from warket's own word list. Your vault is derived from its hash.
+- **No credentials stored**: The seed phrase is hashed on your device and never sent. The server does not store the vault hash either, only a SHA-256 fingerprint of it.
+- **One small server**: A Cloudflare Worker with a D1 (SQLite) database stored in the EU. It checks every request and keeps each vault's rows apart.
+- **Read-only shared vaults**: Give anyone a share key for read-only access, without exposing the seed phrase. Viewers can browse and export. The server refuses every change made with a share key.
 - **Session persistence**: "Keep session open" checkbox on the landing page saves your vault hash in `localStorage` so you stay logged in across tabs and browser restarts. Clicking "Lock" clears it.
-- **Import/Export**: Export your vault as JSON with a list-selector modal (choose which lists to include). Import with auto-positioning and same-name list merging.
+- **Import/Export**: Export your vault as JSON with a list-selector modal (choose which lists to include). Import with auto-positioning and same-name list merging. All or nothing: a broken file writes nothing.
 - **PWA support**: Installable as a Progressive Web App. Includes offline banner on connectivity loss, native Chrome install prompt, and iOS share-sheet hint.
 - **Asset management**: Organize assets into lists, add logos, descriptions (markdown), tags, and resource links.
 - **Smart search**: Search lists by name, or by asset names and tickers within lists.
@@ -38,7 +38,7 @@ warket is a privacy-first web application for managing curated lists of financia
 
 - **Frontend**: React 19 + TypeScript + Vite
 - **Styling**: Tailwind CSS 4 + custom CSS design tokens (dual-theme via `data-theme` attribute)
-- **Database**: Supabase (PostgreSQL)
+- **Server**: Cloudflare Worker (Hono, Drizzle) + D1 (SQLite), in [`server/`](server/)
 - **Routing**: React Router 7
 - **Auth**: Client-side seed phrase → SHA-256 hash → vault partition
 - **Sharing**: SHA-256 with domain separation (`:share` suffix) for one-way share key derivation
@@ -54,19 +54,19 @@ warket is a privacy-first web application for managing curated lists of financia
 ### 1. Seed Phrase Generation & Hashing
 
 On the landing page, users can:
-- Generate a new 12-word BIP39 seed phrase
+- Generate a new 12-word seed phrase
 - Paste an existing seed phrase to access their vault
 - Paste a 64-character share key to open a read-only shared vault
 
-The app auto-detects the input type: a 64-character hex string is verified against the `vault_shares` table before navigating — invalid or non-existent share keys are rejected with an error. Anything else is validated as a 12-word seed phrase.
+The app auto-detects the input type: a 64-character hex string is checked with the server (`GET /v1/session`) before navigating, and unknown share keys are rejected with an error. Anything else is validated as a 12-word seed phrase.
 
-The seed phrase is hashed client-side using **SHA-256** (via Web Crypto API) to produce a 256-bit vault hash. This hash becomes the `vault_hash` partition key in the database.
+The seed phrase is hashed client-side using **SHA-256** (via Web Crypto API) to produce a 256-bit vault hash. The app sends this hash to the server in the `Authorization` header. The server keeps only `SHA-256(vault hash)`, stored as `vault_id`.
 
-**No seed phrase is ever sent to the server.** Only the hash is used for database queries.
+**No seed phrase is ever sent to the server.**
 
 ### 2. Vault Isolation
 
-Each vault is isolated via Row-Level Security (RLS) policies in Supabase. All queries filter by `vault_hash`.
+Every request carries `Authorization: Bearer <vault hash>` (owner) or `Authorization: Share <share key>` (viewer). The server turns it into a vault id and filters every query by it. The full contract is in [`server/API.md`](server/API.md).
 
 The vault hash is stored in `sessionStorage` for the session duration. If "Keep session open" is checked, the hash is also saved to `localStorage` for persistence across tabs and browser restarts. Clicking "Lock" clears both stores and returns to the landing page.
 
@@ -76,13 +76,13 @@ Vault owners can generate a **share key** — a deterministic, one-way hash deri
 
 - The share key cannot be reversed to obtain the vault hash
 - The same vault always produces the same share key
-- Share keys grant read-only access only
+- Share keys grant read-only access only, enforced by the server
 
 **Flow:**
 1. Vault owner clicks the **Share** button (link icon) in the header
-2. App computes `SHA-256(vault_hash + ":share")` → share key
-3. Share key is upserted into `vault_shares` table and copied to clipboard
-4. Anyone can paste the share key on the landing page → opens `/shared/{shareHash}` in read-only mode
+2. The server (`PUT /v1/share`) creates the share and returns the key, `SHA-256(vault_hash + ":share")`
+3. The app copies the key to the clipboard
+4. Anyone can paste the share key on the landing page → opens `/shared/{shareKey}` in read-only mode
 
 **Read-only mode hides:** create/edit/delete buttons, drag-and-drop, import functionality, tag editing, summary editing, and image changes. Export with selective list picking remains available.
 
@@ -98,34 +98,36 @@ Vault owners can generate a **share key** — a deterministic, one-way hash deri
 - Upload a JSON file via the import button in the vault header
 - Auto-positions new lists after existing ones
 - Same-name lists (case-insensitive) are merged — imported assets are appended after existing assets
-- Validates file structure before importing
+- The server checks the whole file and writes it in one go: a broken file writes nothing
 
 ### 5. Data Model
 
+Defined in `server/src/db/schema.ts` (D1, SQLite). Data is stored as plain text, kept apart per vault. It is not end-to-end encrypted.
+
 **Lists** (`lists` table)
 - `id` (UUID)
-- `vault_hash` (text) — partition key
+- `vault_id` (text): SHA-256 of the vault hash, the partition key
 - `name` (text)
-- `tags` (text[])
-- `position` (integer) — manual sort order for drag-and-drop reordering
+- `tags` (JSON text array)
+- `position` (integer): sort order, set by the server
 - `created_at`, `updated_at`
 
 **Assets** (`assets` table)
 - `id` (UUID)
-- `list_id` (UUID) — foreign key to `lists`
+- `list_id` (UUID): foreign key to `lists`, deleted with its list
 - `name` (text)
-- `ticker` (text)
-- `summary` (text, max 250 chars)
+- `ticker` (text, may be empty)
+- `summary` (text, max 250 characters)
 - `description` (text, markdown)
-- `tags` (text[])
-- `resources` (jsonb) — array of `{title, url, favicon}` (order is array order, drag-sortable)
-- `image_url` (text, nullable) — custom logo URL
-- `position` (integer) — manual sort order for drag-and-drop reordering
+- `tags` (JSON text array)
+- `resources` (JSON array of `{title, url, favicon}`, order is array order)
+- `image_url` (text, nullable): custom logo URL
+- `position` (integer): sort order, set by the server
 - `created_at`
 
-**Vault Shares** (`vault_shares` table)
-- `vault_hash` (text) — primary key
-- `share_hash` (text) — unique, indexed
+**Shares** (`shares` table)
+- `vault_id` (text): primary key
+- `share_id` (text): SHA-256 of the share key, unique
 - `created_at`
 
 ### 6. UI/UX Flow
@@ -235,32 +237,34 @@ warket/
 │   │   │   ├── AssetListView.tsx
 │   │   │   └── DescriptionModal.tsx
 │   │   ├── auth/
-│   │   │   └── seedPhrase.ts    # BIP39 generation, SHA-256 hashing, share key derivation
+│   │   │   └── seedPhrase.ts    # Phrase generation and SHA-256 hashing (local only)
 │   │   └── lists/
 │   │       └── ListsView.tsx    # List grid, DnD, search, tag filter, readOnly
 │   ├── lib/
+│   │   ├── api.ts               # Every call to the warket server
 │   │   ├── favicon.ts           # Google favicon proxy
-│   │   ├── fetchTitle.ts       # URL title fetcher (multi-strategy CORS proxy racing)
-│   │   ├── position.ts          # Batch position update helper (DnD)
-│   │   ├── supabase.ts          # Supabase client factory
+│   │   ├── fetchTitle.ts        # URL title fetcher (multi-strategy CORS proxy racing)
+│   │   ├── haptics.ts           # Vibration feedback
+│   │   ├── markdown.ts          # Markdown to safe HTML
 │   │   ├── types.ts             # TypeScript types
-│   │   └── vaultExport.ts       # Export/import logic with selective list support
+│   │   └── vaultExport.ts       # Export file format, download, quick check before import
 │   ├── pages/
 │   │   ├── LandingPage.tsx      # Unified seed phrase / share key input
 │   │   ├── SharedVaultPage.tsx  # Read-only vault page (via share key)
 │   │   └── VaultPage.tsx        # Full vault with CRUD, import/export, share
 │   ├── index.css                # Full design system + dual-theme tokens + animations
 │   └── main.tsx
-├── supabase/
-│   └── schema.sql               # Full schema — tables, RLS policies, helper functions
+├── server/                      # warket server: Cloudflare Worker + D1 (see server/README.md)
+│   ├── API.md                   # The API contract both apps follow
+│   ├── src/                     # Routes, access checks, validation, database schema
+│   └── migrations/              # D1 migrations
+├── docs/archive/                # Retired material, e.g. the old Supabase schema
 ├── src/test/
+│   ├── api.test.ts
 │   ├── fetchTitle.test.ts
 │   ├── fetchTitle.integration.test.ts
-│   ├── position.test.ts
+│   ├── markdown.test.ts
 │   ├── seedPhrase.test.ts
-│   ├── vaultExport.test.ts
-│   ├── fixtures.ts
-│   ├── mockSupabase.ts
 │   └── setup.ts
 ├── package.json
 ├── tsconfig.json
@@ -272,11 +276,11 @@ warket/
 
 ## Native iOS App
 
-A native **Swift/SwiftUI** port lives alongside the web app in `warket-ios/` (Xcode project `warket.xcodeproj`, bundle id `com.blhdes.warket`). Same Supabase project, same seed-phrase vault model — the native app talks to the identical backend so a vault opens on both.
+A native **Swift/SwiftUI** port lives alongside the web app in `warket-ios/` (Xcode project `warket.xcodeproj`, bundle id `com.blhdes.warket`). Same server, same seed-phrase vault model: a vault opens on both.
 
 ```
 warket-ios/warket/
-├── Core/          — vault/session logic, ShareResolver, VaultTransfer (JSON export/import), TitleFetcher
+├── Core/          — APIClient (server calls), VaultRepository, Session, VaultTransfer (JSON export/import), TitleFetcher
 ├── Features/
 │   ├── Unlock/    — seed-phrase entry, generate/paste, shared-vault entry sheet
 │   ├── Lists/     — list grid, share/export/import actions
@@ -289,7 +293,7 @@ warket-ios/warket/
 **Shipped so far:**
 - **MVP** — vault unlock (generate/paste seed phrase), list + asset CRUD, matching the web app's core flow.
 - **Liquid Glass redesign** — UI rebuilt around Liquid Glass surfaces over an animated mesh background.
-- **Web parity pass** — read-only sharing (`ShareResolver`, mirrors the web app's `resolveShareKey`), JSON export/import (`VaultTransfer`, byte-compatible with the web app's export format), system-adaptive theme (follows `UITraitCollection.userInterfaceStyle` — no manual toggle yet, unlike the web app's switch), and resource-title auto-fetch (`TitleFetcher`: direct `URLSession` fetch, no CORS restriction on native, with `api.microlink.io` as a fallback for JS-rendered pages).
+- **Web parity pass** — read-only sharing (the server checks the share key and refuses writes), JSON export/import (`VaultTransfer`, byte-compatible with the web app's export format), system-adaptive theme (follows `UITraitCollection.userInterfaceStyle` — no manual toggle yet, unlike the web app's switch), and resource-title auto-fetch (`TitleFetcher`: direct `URLSession` fetch, no CORS restriction on native, with `api.microlink.io` as a fallback for JS-rendered pages).
 
 Open it with `cd warket-ios && open warket.xcodeproj`.
 
@@ -298,8 +302,8 @@ Open it with `cd warket-ios && open warket.xcodeproj`.
 ## Setup & Installation
 
 ### Prerequisites
-- Node.js 18+
-- Supabase account
+- Node.js 20.19+
+- A Cloudflare account, only to deploy the server
 
 ### 1. Clone & Install
 ```bash
@@ -308,22 +312,22 @@ cd warket
 npm install
 ```
 
-### 2. Supabase Setup
-
-Create a Supabase project, then run the full schema in the **SQL Editor**:
+### 2. Run the Server Locally
 
 ```bash
-supabase/schema.sql
+cd server
+npm install
+npm run db:migrate   # creates the local D1 database
+npm run dev          # http://localhost:8787
 ```
 
-This single file creates all tables, RLS policies, and helper functions.
+Deploying it and the limits it enforces are described in `server/README.md` and `server/API.md`.
 
 ### 3. Environment Variables
 
-Create `.env` in project root:
+Copy `.env.example` to `.env` in the project root. It points the web app at the server:
 ```env
-VITE_SUPABASE_URL=https://your-project.supabase.co
-VITE_SUPABASE_ANON_KEY=your-anon-key
+VITE_API_URL=http://localhost:8787
 ```
 
 ### 4. Run Development Server
@@ -335,7 +339,8 @@ Visit `http://localhost:5173`
 
 ### 5. Run Tests
 ```bash
-npm test         # Run unit tests (Vitest)
+npx vitest run --exclude 'src/test/fetchTitle.integration.test.ts'   # unit tests, no network
+cd server && npm run check && npm test                               # server checks and API tests
 ```
 
 ### 6. Build for Production
@@ -421,8 +426,9 @@ Check the **"Keep session open"** checkbox on the landing page before accessing 
 - **No password recovery**: There is no "forgot password" — the seed phrase IS the password.
 - **Client-side hashing**: SHA-256 is computed in the browser. The hash is deterministic (same phrase = same hash).
 - **Share keys are one-way**: A share key is derived from the vault hash using domain-separated SHA-256 (`hash + ":share"`). It cannot be reversed to obtain the vault hash or seed phrase.
-- **Read-only enforcement**: Shared vault pages render with `readOnly` prop, which disables all mutation UI. Database-level RLS provides the actual security boundary.
-- **Row-Level Security (RLS)**: Supabase policies must be properly configured to isolate vaults. The migration files include RLS policies — **in production, tie RLS to JWT claims or vault_hash validation**.
+- **Read-only enforcement**: The server answers every write made with a share key with an error (403). Hiding the edit buttons is only for comfort.
+- **No keys stored**: The server keeps SHA-256 fingerprints of vault hashes and share keys, never the keys themselves. Vault data is stored as plain text, kept apart per vault.
+- **Rate limits**: The server limits how many requests one address can make per minute.
 - **HTTPS required**: Always serve over HTTPS in production to protect seed phrases in transit.
 
 ---
