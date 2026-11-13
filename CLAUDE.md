@@ -82,7 +82,7 @@ No external state library. Uses React Context only for theme (`src/contexts/Them
 Cloudflare D1 (SQLite) behind the Worker in `server/`. Schema in `server/src/db/schema.ts`, migrations in `server/migrations/`.
 - Tables: `lists`, `assets`, `shares`, keyed by `vault_id` (a fingerprint of the vault hash)
 - The server sets positions: new lists and assets go last, reorder is one all-or-nothing `PUT .../order`
-- The old Supabase project (`supabase/schema.sql`) still serves the live site until the data is moved to Cloudflare
+- The schema of the retired Supabase backend is kept for reference only in `docs/archive/supabase-schema.sql`
 
 ## Security & Environment
 
