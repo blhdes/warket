@@ -38,6 +38,9 @@
 - 2026-11-13: Privacy and support pages at `asset-cafe.vercel.app/privacy` and `/support` (plan D9, no own domain, D16). Changing them later needs an app update.
 - 2026-11-13: Never write "encrypted" in store text, pages or review notes. The server stores vault content as plain text, kept apart per vault. Safe wording: "no account, no email, your 12 words never leave your phone".
 - 2026-11-13: New logo and Icon Composer icon (plan Session 8b) before the screenshots and the build.
+- 2026-11-13: Content rights "does not use third-party content": everything shown is what the user types. Site icons and page titles are fetched only for links the user adds, the way a browser would.
+- 2026-11-13: Age rating 4+, user-generated content "no": a vault is seen only by people its owner gives a key to. No public feed, no strangers, no messaging.
+- 2026-11-13: China mainland left out (ICP filing), as for VILLE.
 - 2026-11-13: Store version `1.0.0`, the same as `MARKETING_VERSION` (Apple created it as 1.0; renamed with your OK).
 - 2026-11-13: Store name `warket: Private Watchlist`, English listing only (the app is English only). Your picks.
 - 2026-11-13: Public contact on the support and privacy pages: your personal Gmail, as for VILLE (your choice, knowing it's public). App Review contact copied from VILLE into `store/contact.env` (gitignored).
@@ -65,11 +68,13 @@
 - ⏳ Privacy policy and support pages written and checked in a local build (2026-11-13). 👉 Live after your yes to push `main` (it deploys the website)
 - ✅ Metadata pushed with `asc metadata apply` (your OK, 2026-11-13): subtitle, description, keywords, promotional text, support and privacy URLs. A dry run afterwards shows 0 changes. To change: edit `store/metadata/`, then the same command
 - ✅ Category Productivity + Finance, price Free (your OK, 2026-11-13)
-- ⬜ Age rating, App Privacy (Chrome), content rights, availability, copyright, App Review details
+- ✅ Availability: every country except China mainland (ICP filing), copyright `2026 Alejandro Gómez Urrea`, content rights "does not use third-party content", age rating all none (4+). Sent with `asc`, your OK (2026-11-13)
+- ⏳ App Privacy answered in Chrome (your OK): Other User Content, not linked to you, App Functionality, no tracking. Saved, NOT published. 👉 You press Publicar on the App Privacy page: its confirmation is your statement that the answers are accurate
+- ⬜ App Review details (contact from `store/contact.env`, notes in `store/review-notes.txt`, demo vault)
 
 ## 4. Screenshots
 
-Waits for plan Session 8b (new icon).
+Waits for plan Session 8b (new icon). Logo workshop (8b.1): https://claude.ai/artifact/TFD8q1ZfsXZp5Epb1wBUcK
 
 - ⬜ Demo mode and demo content (rights checked)
 - ⬜ Capture UI test runs on the iPhone
@@ -94,9 +99,8 @@ Waits for plan Session 8b (new icon).
 5. **Third-party services the app talks to.** Site names go to Google for small site icons (`google.com/s2/favicons`). Links go to `api.microlink.io` to read page titles when the page itself can't be read. Images load from addresses the user types in. The privacy page must name all three.
 6. **Review needs content.** No login: the reviewer taps "Generate new phrase". Offer a share key to a demo vault filled from `warket-seed-data.json`, so they see a full app.
 7. **Share keys can't be changed.** A share key is computed from the vault key, so the same 12 words always give the same share key, and only deleting the vault stops it. The pages say so. The iPhone app has no "Stop sharing" yet (plan 6.8), and even with one, sharing again would bring back the same key.
-8. **Age rating, user-generated content.** A shared vault shows one person's notes to someone they chose. Decide in phase 3 whether that counts as user-generated content (no public feed, no strangers).
-9. **Public repo.** Contact details go in `store/contact.env` (gitignored). No UDIDs or keys in git.
-10. **iPhone Duo.** Screenshots required from April 2027 for iOS 27.1+ SDK builds.
+8. **Public repo.** Contact details go in `store/contact.env` (gitignored). No UDIDs or keys in git.
+9. **iPhone Duo.** Screenshots required from April 2027 for iOS 27.1+ SDK builds.
 
 ## Log
 
@@ -104,3 +108,4 @@ Waits for plan Session 8b (new icon).
 - 2026-11-13: Bundle ID registered (your OK). Privacy and support pages written (`public/`, Vercel rewrites, service worker skips them), built and checked locally, not live. English store copy written and validated, not sent. App record waits for your sign-in to App Store Connect in Chrome. Plan Session 8b (new logo) added before phase 4.
 - 2026-11-13: You signed in. No agreement banners. App record created (Apple ID `6834424963`). `asc validate`: 35 blocking items, the usual list for a new record (copy, review details, category, content rights, price, availability, screenshots, build).
 - 2026-11-13: Sent with your OK: store version renamed 1.0 → 1.0.0 (matches `MARKETING_VERSION`), English copy (`asc metadata apply`, dry run first, then 0 changes left), categories Productivity + Finance, price Free. `asc validate`: 35 → 30 blocking (24 age-rating questions, review details, content rights, availability, copyright, screenshots, build).
+- 2026-11-13: Sent with your OK: availability without China, copyright, content rights, age rating 4+. App Privacy answered and saved in Chrome, not published (the publish confirmation is yours). `asc validate`: 3 blocking left (review details, screenshots, build). Logo workshop published for plan Session 8b. Commits pushed on `fix/audit-session-9`, `main` untouched.
