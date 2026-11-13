@@ -7,19 +7,22 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```bash
 npm run dev       # Start dev server at http://localhost:5173
 npm run build     # TypeScript compile + Vite production build
-npm run lint      # ESLint validation (no test suite exists)
+npm run lint      # ESLint validation
 npm run preview   # Preview production build locally
+npx vitest run --exclude 'src/test/fetchTitle.integration.test.ts'   # unit tests, no network
 ```
 
-There are no tests. `npm run build` is the primary validation step — it runs `tsc -b` first, so TypeScript errors will surface there.
+`npm run build` runs `tsc -b` first, so TypeScript errors surface there. The server has its own checks: `cd server && npm run check && npm test`.
 
 ## Environment
 
-Requires a `.env` file (see `.env.example`):
+Requires a `.env` file (see `.env.example`) with the address of the warket server (`server/`, a Cloudflare Worker):
 ```
-VITE_SUPABASE_URL=https://your-project.supabase.co
-VITE_SUPABASE_ANON_KEY=your-anon-key
+VITE_API_URL=http://localhost:8787
 ```
+
+To run both locally: `cd server && npm run dev` in one terminal, `npm run dev` in another.
+The server's API contract is `server/API.md`.
 
 ### Setup & Hooks
 * **Initialization:** To initialize Claude's local settings and security hooks for a new environment, run `npm run init-claude`.
@@ -32,9 +35,9 @@ VITE_SUPABASE_ANON_KEY=your-anon-key
 
 1. User enters/generates a seed phrase → `src/features/auth/seedPhrase.ts` hashes it via Web Crypto API
 2. Hash becomes the URL segment: `/vault/:hash`
-3. All Supabase queries include an `x-vault-hash` header (set in `src/lib/supabase.ts`)
-4. Supabase RLS policies filter every row by `vault_hash` — multi-tenancy without accounts
-5. Read-only share keys are derived from vault hash (one-way) and stored in `vault_shares` table
+3. Every server call sends `Authorization: Bearer <vault hash>` (set in `src/lib/api.ts`). The server keeps only a SHA-256 fingerprint of it.
+4. The server filters every row by that vault: multi-tenancy without accounts
+5. Read-only share keys are made by the server (`PUT /v1/share`). A viewer sends `Authorization: Share <key>` and the server refuses every write
 
 ### Routing & Pages
 
@@ -48,7 +51,7 @@ App.tsx
 ### Feature Modules
 
 Code is organized by feature under `src/features/`:
-- `auth/` — seed phrase generation (BIP39 wordlist), SHA-256 hashing, share key derivation
+- `auth/` — seed phrase generation (own 534-word list), SHA-256 hashing
 - `assets/` — asset cards, list view, add/edit modals
 - `lists/` — lists grid, CRUD, search/filter
 
@@ -56,16 +59,14 @@ Code is organized by feature under `src/features/`:
 
 | File | Role |
 |------|------|
-| `src/lib/supabase.ts` | Creates vault-scoped Supabase client with `x-vault-hash` header |
-| `src/lib/types.ts` | Shared TypeScript interfaces (`Resource`, `VaultList`, `Asset`) |
-| `src/lib/queries.ts` | Shared Supabase query functions (`resolveShareKey`, `fetchAssetsForList`, `fetchListsByVault`) |
-| `src/lib/vaultExport.ts` | JSON export/import with selective list support |
+| `src/lib/api.ts` | The only file that talks to the server: `createVaultApi(access)` returns every call, errors become `ApiError` with a readable message |
+| `src/lib/types.ts` | Shared TypeScript interfaces (`Resource`, `VaultList`, `ListWithCount`, `Asset`) |
+| `src/lib/vaultExport.ts` | Export file format, file download, quick local check before import |
 | `src/lib/fetchTitle.ts` | URL title fetching (races multiple CORS proxies) |
-| `src/lib/position.ts` | Batch position update for drag-and-drop reordering |
 
 ### State Management
 
-No external state library. Uses React Context only for theme (`src/contexts/ThemeContext.tsx`). Everything else is local component state with direct Supabase calls.
+No external state library. Uses React Context only for theme (`src/contexts/ThemeContext.tsx`). Everything else is local component state. Pages build one `api` object and pass it down as a prop; `api.readOnly` is true for a shared vault.
 
 ### Styling
 
@@ -78,16 +79,16 @@ No external state library. Uses React Context only for theme (`src/contexts/Them
 
 ### Database
 
-Supabase PostgreSQL with RLS. Schema defined in `supabase/schema.sql`:
-- Tables: `lists`, `assets`, `vault_shares`
-- All tables have a `vault_hash` column filtered by RLS using the request header
-- Drag-and-drop order persisted via `position` column (batch updated via `src/lib/position.ts`)
+Cloudflare D1 (SQLite) behind the Worker in `server/`. Schema in `server/src/db/schema.ts`, migrations in `server/migrations/`.
+- Tables: `lists`, `assets`, `shares`, keyed by `vault_id` (a fingerprint of the vault hash)
+- The server sets positions: new lists and assets go last, reorder is one all-or-nothing `PUT .../order`
+- The old Supabase project (`supabase/schema.sql`) still serves the live site until the data is moved to Cloudflare
 
 ## Security & Environment
 
-- **Seed phrases never leave the client.** All operations in `src/features/auth/seedPhrase.ts` — generation, hashing, share key derivation — are local. Never suggest or implement code that transmits a seed phrase over the network.
-- Only the resulting `vault_hash` is sent to Supabase, never the phrase itself.
-- `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` live in `.env` and must never be hardcoded in source files or committed to the repository.
+- **Seed phrases never leave the client.** Generation and hashing in `src/features/auth/seedPhrase.ts` are local. Never suggest or implement code that transmits a seed phrase over the network.
+- Only the resulting vault hash is sent to the server, in the `Authorization` header, never in a URL query or body.
+- Never cache server answers in the service worker: they depend on the `Authorization` header, so a URL-keyed cache would mix up vaults.
 
 ## Coding Style
 
@@ -105,12 +106,12 @@ Read these first when refactoring any data logic:
 | File | Purpose |
 |------|---------|
 | `src/lib/types.ts` | Central TypeScript interfaces — `Resource`, `VaultList`, `Asset` |
-| `src/lib/queries.ts` | Shared query functions — use these before writing inline Supabase queries |
-| `supabase/schema.sql` | Full database schema — tables, columns, RLS policies, helper functions |
+| `src/lib/api.ts` | Every server call. Add new calls here, never `fetch` the server from a component |
+| `server/API.md` | The server contract both apps follow |
 
 ### Drag & Drop
 
-Uses `@dnd-kit` (core + sortable + utilities). Position updates are batched to Supabase after drop events complete.
+Uses `@dnd-kit` (core + sortable + utilities). After a drop the new order is sent in one request; on failure the view reloads from the server.
 
 ### Components
 
