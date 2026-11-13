@@ -14,15 +14,10 @@ settings:
     DEVELOPMENT_LANGUAGE: en
     CODE_SIGN_STYLE: Automatic
 
-# Supabase URL + anon key live here (gitignored). See Secrets.xcconfig.example.
+# Your Apple signing team lives here (gitignored). See Secrets.xcconfig.example.
 configFiles:
   Debug: warket/Config/Secrets.xcconfig
   Release: warket/Config/Secrets.xcconfig
-
-packages:
-  Supabase:
-    url: https://github.com/supabase/supabase-swift
-    from: "2.0.0"
 
 targets:
   warket:
@@ -43,9 +38,6 @@ targets:
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         TARGETED_DEVICE_FAMILY: "1"
         ENABLE_PREVIEWS: "YES"
-    dependencies:
-      - package: Supabase
-        product: Supabase
 
   warketTests:
     type: bundle.unit-test

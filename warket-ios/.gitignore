@@ -1,7 +1,7 @@
 # XcodeGen output — regenerate with `xcodegen generate`
 *.xcodeproj/
 
-# Supabase credentials (copy Secrets.xcconfig.example → Secrets.xcconfig)
+# Local settings: signing team (copy Secrets.xcconfig.example → Secrets.xcconfig)
 warket/Config/Secrets.xcconfig
 
 # Build artifacts
