@@ -1,0 +1,87 @@
+/* Privacy and support pages. Plain HTML, system fonts, no outside requests. */
+
+:root {
+  color-scheme: dark light;
+  --bg: #08090d;
+  --surface: #0e1018;
+  --border: #262a38;
+  --text: #f0f0f2;
+  --text-2: #a0a3b1;
+  --text-3: #636678;
+  --accent: #2a9d8f;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #f8f9fb;
+    --surface: #ffffff;
+    --border: #dfe1e8;
+    --text: #1a1d27;
+    --text-2: #4a4e5c;
+    --text-3: #7a7f91;
+    --accent: #1a8377;
+  }
+}
+
+* { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text-2);
+  font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+}
+
+main {
+  max-width: 680px;
+  margin: 0 auto;
+  padding: max(40px, env(safe-area-inset-top)) 20px 72px;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text);
+  text-decoration: none;
+  font: 26px/1 ui-serif, "New York", Georgia, serif;
+}
+
+.brand img { width: 28px; height: 28px; border-radius: 7px; }
+
+h1, h2 { color: var(--text); font-family: ui-serif, "New York", Georgia, serif; font-weight: 400; }
+h1 { font-size: 44px; line-height: 1.1; margin: 48px 0 6px; }
+h2 { font-size: 26px; line-height: 1.25; margin: 44px 0 10px; }
+h3 { color: var(--text); font-size: 17px; margin: 28px 0 4px; }
+
+p, ul { margin: 0 0 14px; }
+ul { padding-left: 22px; }
+li { margin-bottom: 8px; }
+strong { color: var(--text); font-weight: 600; }
+
+a { color: var(--accent); text-underline-offset: 3px; }
+
+.date { color: var(--text-3); font-size: 14px; margin-bottom: 28px; }
+.lead { color: var(--text); font-size: 18px; }
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 18px 20px;
+  margin: 22px 0;
+}
+
+.card p:last-child { margin-bottom: 0; }
+
+footer {
+  margin-top: 56px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+  color: var(--text-3);
+  font-size: 14px;
+}
+
+footer a { color: var(--text-2); }

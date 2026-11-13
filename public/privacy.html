@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Privacy · warket</title>
+  <meta name="description" content="What warket keeps, where it keeps it, and who it talks to." />
+  <meta name="theme-color" content="#08090d" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+  <link rel="stylesheet" href="/pages.css" />
+</head>
+<body>
+<main>
+  <a class="brand" href="/"><img src="/favicon.svg" alt="" />warket</a>
+
+  <h1>Privacy</h1>
+  <p class="date">Effective 13 November 2026</p>
+
+  <p class="lead">warket has no account, no email, no analytics, no advertising and no tracking. This page explains what warket keeps, where it keeps it, and who it talks to. It covers the iPhone app and the website at asset-cafe.vercel.app.</p>
+
+  <h2>Your 12 words</h2>
+  <ul>
+    <li>warket makes your 12 words on your device, or you type your own. <strong>They never leave your device.</strong></li>
+    <li>From them, your device computes a vault key: a SHA-256 fingerprint of the words. The key can't be turned back into the words.</li>
+    <li>The vault key travels with every request to the warket server, inside the request, over HTTPS. The server stores only a fingerprint of the key, never the key itself.</li>
+    <li>Nobody can recover your words for you, not even us. If you lose them, the vault is lost.</li>
+  </ul>
+
+  <h2>What the warket server keeps</h2>
+  <ul>
+    <li>What you put in your vault: list names, and for each asset its name, ticker, tags, summary, notes, links (address, title and site icon address) and image address. Also the order of your lists and assets, and when each one was created and last changed.</li>
+    <li>If you create a share key: a fingerprint of that key.</li>
+  </ul>
+  <p>The server runs on Cloudflare, and the data sits in a Cloudflare database in the European Union. Each vault is kept apart: the server finds your data only through the fingerprint of your vault key, and it never knows who you are.</p>
+  <div class="card">
+    <p><strong>Your vault content is stored as plain text.</strong> It is private to your vault key, but whoever runs the server could technically read it. Don't keep passwords or other secrets in your notes. Anyone who has your 12 words or your vault key can read and change your vault, so keep them to yourself.</p>
+  </div>
+
+  <h2>Sharing</h2>
+  <ul>
+    <li>A share key lets anyone who has it read your vault, never change it. warket never lists or publishes vaults: only people you give a key to can see yours.</li>
+    <li>A share key keeps working until the vault is deleted. Today that is the only way to stop it, and the same 12 words always give the same share key.</li>
+  </ul>
+
+  <h2>Your IP address</h2>
+  <p>Like any internet service, the server sees your device's IP address. Cloudflare uses it to deliver the request, and warket uses it to limit how many requests one address can make in a minute, to stop floods. warket keeps no request logs and no IP addresses. If the server hits an unexpected error, it keeps a short technical error report for a few days, without your vault key or your vault's content.</p>
+
+  <h2>What stays on your device</h2>
+  <h3>iPhone app</h3>
+  <ul>
+    <li>If you turn on "Keep me signed in", your vault key is saved in the iPhone's Keychain, on this iPhone only. Lock vault removes it.</li>
+    <li>Whether you stay signed in, and how the Lists screen is laid out (grid or list).</li>
+  </ul>
+  <h3>Website</h3>
+  <ul>
+    <li>Your vault key, for as long as the tab is open, and also in the browser's storage if you tick "Keep session open". Lock removes it.</li>
+    <li>Your theme, and whether you closed the install hint.</li>
+  </ul>
+  <p>None of this is sent to anyone.</p>
+
+  <h2>Other services warket talks to</h2>
+  <p>These services see your device's IP address, as with any internet request. warket sends them only what is listed here, never your 12 words or your vault key.</p>
+  <ul>
+    <li><strong>Google</strong> (www.google.com/s2/favicons): the site name of each link you add, to show the site's small icon. <a href="https://policies.google.com/privacy">Google's privacy policy</a>.</li>
+    <li><strong>Link titles.</strong> When you add a link, warket reads the page's title. The iPhone app first asks the page itself and, if that fails, sends the link to <a href="https://microlink.io/privacy">microlink.io</a>. The website sends the link to jsonlink.io, allorigins.win, corsproxy.io and codetabs.com, because browsers can't read other sites directly.</li>
+    <li><strong>Images.</strong> An image address you add to an asset is loaded from that address, so that website receives the request.</li>
+    <li><strong>Links you open</strong> open in Safari or in a new browser tab, where that site's own policy applies.</li>
+    <li><strong>Website only:</strong> fonts from Google Fonts and Fontshare, and hosting by Vercel.</li>
+  </ul>
+
+  <h2>Deleting your data</h2>
+  <ul>
+    <li><strong>iPhone app:</strong> Lists menu, then Delete vault. This erases every list, asset and share key of the vault from the server, at once and for good. Use Export vault first if you want a copy.</li>
+    <li><strong>Website:</strong> delete your lists. Deleting a list deletes its assets.</li>
+    <li>Deleting the app does not delete your vault on the server. Use Delete vault first.</li>
+  </ul>
+  <p>warket doesn't know who you are, so we can't find or delete a vault for you by email.</p>
+
+  <h2>Children</h2>
+  <p>warket is not made for children, and it asks nobody for personal data.</p>
+
+  <h2>Changes</h2>
+  <p>If this policy changes, the new version appears on this page with a new date.</p>
+
+  <h2>Contact</h2>
+  <p>Questions: <a href="mailto:agomezurrea@gmail.com">agomezurrea@gmail.com</a>. Never send your 12 words or your vault key. We never need them.</p>
+
+  <footer><a href="/support">Support</a> · <a href="/">warket</a></footer>
+</main>
+</body>
+</html>

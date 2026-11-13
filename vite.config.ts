@@ -14,6 +14,8 @@ export default defineConfig({
       manifest: false,
       workbox: {
         cleanupOutdatedCaches: true,
+        // The privacy and support pages are plain HTML, not part of the app.
+        navigateFallbackDenylist: [/^\/privacy/, /^\/support/],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
