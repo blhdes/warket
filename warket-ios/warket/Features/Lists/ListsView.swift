@@ -1,3 +1,4 @@
+import os
 import SwiftUI
 import UIKit
 import UniformTypeIdentifiers
@@ -11,8 +12,7 @@ enum ListLayout: String {
 /// contained asset name/ticker), tag filtering, drag-reorder, and a toggle
 /// between a native List and the 2-column grid.
 struct ListsView: View {
-    let vaultHash: String
-    let readOnly: Bool
+    let access: VaultAccess
     @Environment(Session.self) private var session
     @Environment(ToastCenter.self) private var toast
 
@@ -42,10 +42,9 @@ struct ListsView: View {
         GridItem(.flexible(), spacing: 12),
     ]
 
-    init(vaultHash: String, readOnly: Bool = false) {
-        self.vaultHash = vaultHash
-        self.readOnly = readOnly
-        _repo = State(initialValue: VaultRepository(vaultHash: vaultHash))
+    init(access: VaultAccess) {
+        self.access = access
+        _repo = State(initialValue: VaultRepository(access: access))
     }
 
     var body: some View {
@@ -273,6 +272,8 @@ struct ListsView: View {
 
     // MARK: - Derived
 
+    private var readOnly: Bool { access.isReadOnly }
+
     private var isFiltered: Bool {
         !search.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || activeTag != nil
     }
@@ -309,18 +310,24 @@ struct ListsView: View {
         do {
             lists = try await repo.fetchLists()
             phase = .loaded
+        } catch is CancellationError {
+            return // the screen closed or a newer load replaced this one
         } catch {
             phase = .failed(error.localizedDescription)
             return
         }
-        if let rows = try? await repo.fetchAssetIndex(listIds: lists.map(\.list.id)) {
+        // Search by asset name still works without the index, so a failure here only logs.
+        do {
+            let rows = try await repo.fetchAssetIndex()
             assetIndex = Dictionary(grouping: rows, by: \.listId)
+        } catch {
+            Logger.api.error("Search index failed to load: \(error.localizedDescription)")
         }
     }
 
     private func createList(name: String, tags: [String]) async -> Bool {
         do {
-            try await repo.createList(name: name, tags: tags, position: lists.count)
+            try await repo.createList(name: name, tags: tags)
             Haptics.success()
             toast.show("List created", .success)
             await load()
@@ -362,13 +369,16 @@ struct ListsView: View {
     private func move(from source: IndexSet, to destination: Int) {
         lists.move(fromOffsets: source, toOffset: destination)
         Haptics.impact(.light)
-        let changes = lists.enumerated().map { PositionChange(id: $0.element.list.id, position: $0.offset) }
+        let ids = lists.map(\.list.id)
         reorderTask?.cancel()
         reorderTask = Task {
             do {
-                try await repo.updatePositions(table: "lists", changes: changes)
+                try await repo.reorderLists(ids: ids)
             } catch {
-                if !Task.isCancelled { toast.show(error.localizedDescription, .error) }
+                // Cancelled means a newer drag replaced this one and will save the order itself.
+                guard !Task.isCancelled else { return }
+                toast.show(error.localizedDescription, .error)
+                await load() // nothing was saved, so show the server's order again
             }
         }
     }

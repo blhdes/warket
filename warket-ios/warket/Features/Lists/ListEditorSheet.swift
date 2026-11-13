@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Create or edit a list (name + tags). The parent supplies an async `onSave`
-/// closure that performs the actual Supabase write, then this sheet dismisses.
+/// closure that performs the actual server write, then this sheet dismisses.
 struct ListEditorSheet: View {
     enum Mode {
         case create

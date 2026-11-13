@@ -262,17 +262,19 @@ struct UnlockView: View {
         let key = shareKey.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         guard !key.isEmpty else { return }
         shareError = nil
+        guard VaultAccess.isValidKey(key) else {
+            shareError = "Invalid or expired share key."
+            Haptics.error()
+            return
+        }
         resolvingShare = true
         defer { resolvingShare = false }
         do {
-            guard let vaultHash = try await ShareResolver.resolve(shareHash: key) else {
-                shareError = "Invalid or expired share key."
-                Haptics.error()
-                return
-            }
+            // The server answers an unknown key with "Invalid or expired share key."
+            try await VaultRepository(access: .shared(shareKey: key)).checkAccess()
             Haptics.success()
             showingShareEntry = false
-            session.openShared(hash: vaultHash)
+            session.openShared(shareKey: key)
         } catch {
             shareError = error.localizedDescription
             Haptics.error()

@@ -1,12 +1,23 @@
 import Foundation
-import Supabase
 
-/// A list paired with its asset count, for the lists grid. Mirrors the web app's
-/// `ListWithCount` (VaultList + asset_count) in `src/features/lists/ListsView.tsx`.
+/// A list paired with its asset count, for the lists grid. Mirrors `ListWithCount`
+/// in the web app's `src/lib/types.ts` (a `VaultList` plus `asset_count`).
 struct ListWithAssetCount: Identifiable, Hashable {
     let list: VaultList
     let assetCount: Int
     var id: String { list.id }
+}
+
+extension ListWithAssetCount: Decodable {
+    private enum CodingKeys: String, CodingKey {
+        case assetCount = "asset_count"
+    }
+
+    init(from decoder: Decoder) throws {
+        list = try VaultList(from: decoder)
+        assetCount = try decoder.container(keyedBy: CodingKeys.self)
+            .decodeIfPresent(Int.self, forKey: .assetCount) ?? 0
+    }
 }
 
 /// Lightweight row for the search index (list name + ticker lookup).
@@ -21,72 +32,60 @@ struct AssetSearchRow: Decodable, Hashable {
     }
 }
 
-/// All Supabase reads/writes for a single vault. Mirrors `src/lib/queries.ts`,
-/// `src/lib/position.ts`, and the inline calls in the web app's feature views.
+/// Every server call for one vault. Mirrors `createVaultApi` in the web app's
+/// `src/lib/api.ts`. The server places new items last, tidies input, and refuses
+/// every write made with a share key.
 final class VaultRepository {
-    let vaultHash: String
-    private let client: SupabaseClient
+    let access: VaultAccess
+    private let api: APIClient
 
-    init(vaultHash: String) {
-        self.vaultHash = vaultHash
-        self.client = VaultClient.make(vaultHash: vaultHash)
+    init(access: VaultAccess) {
+        self.access = access
+        self.api = APIClient(access: access)
+    }
+
+    /// Succeeds when the server accepts this key. An unknown share key fails with
+    /// the server's "Invalid or expired share key." message.
+    func checkAccess() async throws {
+        let _: SessionAnswer = try await api.get("/v1/session")
     }
 
     // MARK: - Lists
 
-    /// `lists` + asset counts, ordered by position. Maps the `assets(count)` join.
+    /// Lists with asset counts, ordered by position.
     func fetchLists() async throws -> [ListWithAssetCount] {
-        let rows: [ListCountRow] = try await client
-            .from("lists")
-            .select("*, assets(count)")
-            .eq("vault_hash", value: vaultHash)
-            .order("position", ascending: true)
-            .execute()
-            .value
-        return rows.map(\.asListWithCount)
+        try await api.get("/v1/lists")
     }
 
-    /// Lightweight name+ticker index for list-level search (M4).
-    func fetchAssetIndex(listIds: [String]) async throws -> [AssetSearchRow] {
-        guard !listIds.isEmpty else { return [] }
-        return try await client
-            .from("assets")
-            .select("list_id, name, ticker")
-            .in("list_id", values: listIds)
-            .execute()
-            .value
+    /// Name and ticker of every asset in the vault, for list-level search.
+    func fetchAssetIndex() async throws -> [AssetSearchRow] {
+        try await api.get("/v1/assets/index")
     }
 
-    func createList(name: String, tags: [String], position: Int) async throws {
-        try await client
-            .from("lists")
-            .insert(NewList(vault_hash: vaultHash, name: name, tags: tags, position: position))
-            .execute()
+    @discardableResult
+    func createList(name: String, tags: [String]) async throws -> VaultList {
+        try await api.send("POST", "/v1/lists", body: ListInput(name: name, tags: tags))
     }
 
-    func updateList(id: String, name: String, tags: [String]) async throws {
-        try await client
-            .from("lists")
-            .update(ListUpdate(name: name, tags: tags))
-            .eq("id", value: id)
-            .execute()
+    @discardableResult
+    func updateList(id: String, name: String, tags: [String]) async throws -> VaultList {
+        try await api.send("PATCH", "/v1/lists/\(id)", body: ListInput(name: name, tags: tags))
     }
 
-    /// Deletes the list; assets cascade-delete via the FK.
+    /// Deletes the list and its assets.
     func deleteList(id: String) async throws {
-        try await client.from("lists").delete().eq("id", value: id).execute()
+        try await api.sendNoContent("DELETE", "/v1/lists/\(id)")
+    }
+
+    /// `ids` must be every list of the vault, in the new order. Saved all at once or not at all.
+    func reorderLists(ids: [String]) async throws {
+        try await api.sendNoContent("PUT", "/v1/lists/order", body: OrderInput(ids: ids))
     }
 
     // MARK: - Assets
 
     func fetchAssets(listId: String) async throws -> [Asset] {
-        try await client
-            .from("assets")
-            .select("*")
-            .eq("list_id", value: listId)
-            .order("position", ascending: true)
-            .execute()
-            .value
+        try await api.get("/v1/lists/\(listId)/assets")
     }
 
     @discardableResult
@@ -98,183 +97,60 @@ final class VaultRepository {
         description: String,
         tags: [String],
         resources: [Resource],
-        imageUrl: String?,
-        position: Int
+        imageUrl: String?
     ) async throws -> Asset {
-        try await client
-            .from("assets")
-            .insert(NewAsset(
-                list_id: listId, name: name, ticker: ticker, summary: summary,
-                description: description, tags: tags, resources: resources,
-                image_url: imageUrl, position: position
-            ))
-            .select()
-            .single()
-            .execute()
-            .value
+        try await api.send("POST", "/v1/lists/\(listId)/assets", body: AssetInput(
+            name: name, ticker: ticker, summary: summary, description: description,
+            tags: tags, resources: resources, image_url: imageUrl
+        ))
     }
 
-    /// Updates only the non-nil fields (optional properties are omitted when nil).
-    func updateAsset(id: String, fields: AssetUpdate) async throws {
-        try await client
-            .from("assets")
-            .update(fields)
-            .eq("id", value: id)
-            .execute()
+    /// Changes only the non-nil fields and returns the saved asset, as tidied by the server.
+    @discardableResult
+    func updateAsset(id: String, fields: AssetUpdate) async throws -> Asset {
+        try await api.send("PATCH", "/v1/assets/\(id)", body: fields)
     }
 
     func deleteAsset(id: String) async throws {
-        try await client.from("assets").delete().eq("id", value: id).execute()
+        try await api.sendNoContent("DELETE", "/v1/assets/\(id)")
     }
 
-    // MARK: - Reorder (mirrors src/lib/position.ts: parallel position updates)
-
-    func updatePositions(table: String, changes: [PositionChange]) async throws {
-        let client = self.client
-        try await withThrowingTaskGroup(of: Void.self) { group in
-            for change in changes {
-                group.addTask {
-                    try await client
-                        .from(table)
-                        .update(PositionUpdate(position: change.position))
-                        .eq("id", value: change.id)
-                        .execute()
-                }
-            }
-            try await group.waitForAll()
-        }
+    /// `ids` must be every asset of the list, in the new order. Saved all at once or not at all.
+    func reorderAssets(listId: String, ids: [String]) async throws {
+        try await api.sendNoContent("PUT", "/v1/lists/\(listId)/assets/order", body: OrderInput(ids: ids))
     }
 
-    // MARK: - Export / Import (mirrors src/lib/vaultExport.ts)
+    // MARK: - Export / Import
 
-    /// Build the JSON export payload. `listIds == nil` exports the whole vault.
+    /// The export file content. `listIds == nil` exports the whole vault.
     func exportVault(listIds: [String]? = nil) async throws -> VaultExport {
-        let all = try await fetchLists()
-        let selected: [ListWithAssetCount]
-        if let listIds, !listIds.isEmpty {
-            let wanted = Set(listIds)
-            selected = all.filter { wanted.contains($0.list.id) }
-        } else {
-            selected = all
-        }
-
-        var exportedLists: [ExportedList] = []
-        for item in selected {
-            let assets = try await fetchAssets(listId: item.list.id)
-            let exportedAssets = assets.map { a in
-                ExportedAsset(
-                    name: a.name, ticker: a.ticker, summary: a.summary,
-                    description: a.description, tags: a.tags, resources: a.resources,
-                    imageUrl: (a.imageUrl?.isEmpty == false) ? a.imageUrl : nil
-                )
-            }
-            exportedLists.append(ExportedList(name: item.list.name, tags: item.list.tags, assets: exportedAssets))
-        }
-
-        return VaultExport(
-            version: 1,
-            app: "warket",
-            exportedAt: ISO8601DateFormatter().string(from: Date()),
-            lists: exportedLists
-        )
+        guard let listIds, !listIds.isEmpty else { return try await api.get("/v1/export") }
+        return try await api.get("/v1/export?lists=\(listIds.joined(separator: ","))")
     }
 
-    /// Import a payload, merging by lowercased list name: assets append after the
-    /// list's current max position; unknown lists are created after the last one.
+    /// Lists merge by name without regard to case. All or nothing: a failure writes nothing.
     @discardableResult
     func importVault(_ data: VaultExport) async throws -> (lists: Int, assets: Int) {
-        let existing = try await fetchLists()
-        var byName: [String: String] = [:]
-        var nextListPosition = 0
-        for item in existing {
-            byName[item.list.name.lowercased()] = item.list.id
-            if item.list.position >= nextListPosition { nextListPosition = item.list.position + 1 }
-        }
-
-        var listsImported = 0
-        var assetsImported = 0
-
-        for list in data.lists {
-            let listId: String
-            if let matchId = byName[list.name.lowercased()] {
-                listId = matchId
-            } else {
-                listId = try await createListReturningId(name: list.name, tags: list.tags, position: nextListPosition)
-                nextListPosition += 1
-                byName[list.name.lowercased()] = listId
-                listsImported += 1
-            }
-
-            guard !list.assets.isEmpty else { continue }
-            let base = (try await maxAssetPosition(listId: listId) ?? -1) + 1
-            let rows = list.assets.enumerated().map { offset, asset in
-                NewAsset(
-                    list_id: listId, name: asset.name, ticker: asset.ticker,
-                    summary: asset.summary, description: asset.description,
-                    tags: asset.tags, resources: asset.resources,
-                    image_url: asset.imageUrl, position: base + offset
-                )
-            }
-            try await addAssets(rows)
-            assetsImported += rows.count
-        }
-
-        return (listsImported, assetsImported)
+        let answer: ImportAnswer = try await api.send("POST", "/v1/import", body: data)
+        return (answer.listsImported, answer.assetsImported)
     }
 
-    /// Highest `position` among a list's assets — a one-row read, so import can
-    /// append without pulling every asset's full row (mirrors the web).
-    private func maxAssetPosition(listId: String) async throws -> Int? {
-        let rows: [PositionRow] = try await client
-            .from("assets")
-            .select("position")
-            .eq("list_id", value: listId)
-            .order("position", ascending: false)
-            .limit(1)
-            .execute()
-            .value
-        return rows.first?.position
-    }
+    // MARK: - Sharing and deletion
 
-    /// Insert many assets in one request (mirrors the web's per-list batch).
-    private func addAssets(_ rows: [NewAsset]) async throws {
-        guard !rows.isEmpty else { return }
-        try await client.from("assets").insert(rows).execute()
-    }
-
-    private func createListReturningId(name: String, tags: [String], position: Int) async throws -> String {
-        let row: CreatedListID = try await client
-            .from("lists")
-            .insert(NewList(vault_hash: vaultHash, name: name, tags: tags, position: position))
-            .select("id")
-            .single()
-            .execute()
-            .value
-        return row.id
-    }
-
-    // MARK: - Sharing (mirrors VaultPage.handleShare)
-
-    /// Create or refresh this vault's read-only share key and return it. The key
-    /// is derived one-way from the vault hash, so it can't be reversed.
-    @discardableResult
+    /// Creates the vault's read-only share key, or returns the existing one.
     func upsertShare() async throws -> String {
-        let shareHash = SeedPhrase.deriveShareHash(vaultHash)
-        try await client
-            .from("vault_shares")
-            .upsert(ShareUpsert(vault_hash: vaultHash, share_hash: shareHash), onConflict: "vault_hash")
-            .execute()
-        return shareHash
+        let answer: ShareAnswer = try await api.send("PUT", "/v1/share")
+        return answer.shareKey
+    }
+
+    /// Erases every list, asset and the share key of this vault on the server.
+    func deleteVault() async throws {
+        try await api.sendNoContent("DELETE", "/v1/vault")
     }
 }
 
-struct PositionChange: Sendable {
-    let id: String
-    let position: Int
-}
-
-/// Partial asset update — nil fields are omitted from the JSON, so only the
-/// provided columns change (mirrors the web app's targeted `.update({...})`).
+/// Partial asset update. Nil fields are left out of the JSON, so only the provided
+/// fields change. To clear a field send `""`, never nil.
 struct AssetUpdate: Encodable {
     var name: String?
     var ticker: String?
@@ -285,64 +161,14 @@ struct AssetUpdate: Encodable {
     var image_url: String?
 }
 
-// MARK: - Private DTOs
+// MARK: - Request and answer bodies
 
-/// Decodes the `select('*, assets(count)')` response shape.
-private struct ListCountRow: Decodable {
-    let id: String
-    let vault_hash: String
-    let name: String
-    let tags: [String]
-    let position: Int
-    let created_at: String
-    let updated_at: String
-    let assets: [CountRow]?
-
-    struct CountRow: Decodable { let count: Int }
-
-    enum CodingKeys: String, CodingKey {
-        case id, vault_hash, name, tags, position, created_at, updated_at, assets
-    }
-
-    /// Only `id` is required. Missing or null columns fall back to empty values
-    /// so one odd list row never stops the whole vault from loading.
-    init(from decoder: Decoder) throws {
-        let c = try decoder.container(keyedBy: CodingKeys.self)
-        id = try c.decode(String.self, forKey: .id)
-        vault_hash = try c.decodeIfPresent(String.self, forKey: .vault_hash) ?? ""
-        name = try c.decodeIfPresent(String.self, forKey: .name) ?? ""
-        tags = try c.decodeIfPresent([String].self, forKey: .tags) ?? []
-        position = try c.decodeIfPresent(Int.self, forKey: .position) ?? 0
-        created_at = try c.decodeIfPresent(String.self, forKey: .created_at) ?? ""
-        updated_at = try c.decodeIfPresent(String.self, forKey: .updated_at) ?? ""
-        assets = try c.decodeIfPresent([CountRow].self, forKey: .assets)
-    }
-
-    var asListWithCount: ListWithAssetCount {
-        ListWithAssetCount(
-            list: VaultList(
-                id: id, vaultHash: vault_hash, name: name, tags: tags,
-                position: position, createdAt: created_at, updatedAt: updated_at
-            ),
-            assetCount: assets?.first?.count ?? 0
-        )
-    }
-}
-
-private struct NewList: Encodable {
-    let vault_hash: String
-    let name: String
-    let tags: [String]
-    let position: Int
-}
-
-private struct ListUpdate: Encodable {
+private struct ListInput: Encodable {
     let name: String
     let tags: [String]
 }
 
-private struct NewAsset: Encodable {
-    let list_id: String
+private struct AssetInput: Encodable {
     let name: String
     let ticker: String
     let summary: String
@@ -350,22 +176,30 @@ private struct NewAsset: Encodable {
     let tags: [String]
     let resources: [Resource]
     let image_url: String?
-    let position: Int
 }
 
-private struct PositionUpdate: Encodable {
-    let position: Int
+private struct OrderInput: Encodable {
+    let ids: [String]
 }
 
-private struct CreatedListID: Decodable {
-    let id: String
+private struct SessionAnswer: Decodable {
+    let mode: String
 }
 
-private struct PositionRow: Decodable {
-    let position: Int
+private struct ImportAnswer: Decodable {
+    let listsImported: Int
+    let assetsImported: Int
+
+    enum CodingKeys: String, CodingKey {
+        case listsImported = "lists_imported"
+        case assetsImported = "assets_imported"
+    }
 }
 
-private struct ShareUpsert: Encodable {
-    let vault_hash: String
-    let share_hash: String
+private struct ShareAnswer: Decodable {
+    let shareKey: String
+
+    enum CodingKeys: String, CodingKey {
+        case shareKey = "share_key"
+    }
 }

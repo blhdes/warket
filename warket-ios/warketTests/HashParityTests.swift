@@ -17,11 +17,6 @@ final class HashParityTests: XCTestCase {
         XCTAssertEqual(messy, clean)
     }
 
-    func testShareHashReferenceVector() {
-        let share = SeedPhrase.deriveShareHash("ecb0e7ba498c5920991f0b3483e91f7abafa9ecc6bd82a9a51494589592b1a8f")
-        XCTAssertEqual(share, "4aedbd98322b258ec221d52e62bed851cd76131c7e9452e125eaeecd169c8e7f")
-    }
-
     func testRejectsWrongWordCount() {
         XCTAssertThrowsError(try SeedPhrase.hash("only three words")) { error in
             XCTAssertEqual(error as? SeedPhraseError, .invalidWordCount(3))

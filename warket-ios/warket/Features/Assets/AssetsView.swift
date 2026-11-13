@@ -192,6 +192,8 @@ struct AssetsView: View {
         do {
             assets = try await repo.fetchAssets(listId: list.id)
             phase = .loaded
+        } catch is CancellationError {
+            return // the screen closed or a newer load replaced this one
         } catch {
             phase = .failed(error.localizedDescription)
         }
@@ -207,8 +209,7 @@ struct AssetsView: View {
                 description: draft.description,
                 tags: draft.tags,
                 resources: draft.resources,
-                imageUrl: draft.imageUrl.isEmpty ? nil : draft.imageUrl,
-                position: assets.count
+                imageUrl: draft.imageUrl.isEmpty ? nil : draft.imageUrl
             )
             Haptics.success()
             toast.show("Asset added", .success)
@@ -255,13 +256,16 @@ struct AssetsView: View {
     private func move(from source: IndexSet, to destination: Int) {
         assets.move(fromOffsets: source, toOffset: destination)
         Haptics.impact(.light)
-        let changes = assets.enumerated().map { PositionChange(id: $0.element.id, position: $0.offset) }
+        let ids = assets.map(\.id)
         reorderTask?.cancel()
         reorderTask = Task {
             do {
-                try await repo.updatePositions(table: "assets", changes: changes)
+                try await repo.reorderAssets(listId: list.id, ids: ids)
             } catch {
-                if !Task.isCancelled { toast.show(error.localizedDescription, .error) }
+                // Cancelled means a newer drag replaced this one and will save the order itself.
+                guard !Task.isCancelled else { return }
+                toast.show(error.localizedDescription, .error)
+                await load() // nothing was saved, so show the server's order again
             }
         }
     }

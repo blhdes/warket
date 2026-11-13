@@ -191,18 +191,12 @@ struct AssetDetailView: View {
 
     private func applyEdit(_ draft: AssetDraft) async -> Bool {
         do {
-            try await repo.updateAsset(id: asset.id, fields: AssetUpdate(
+            // The server tidies input (uppercase ticker, lowercase tags), so show what it saved.
+            asset = try await repo.updateAsset(id: asset.id, fields: AssetUpdate(
                 name: draft.name, ticker: draft.ticker, summary: draft.summary,
                 description: draft.description, tags: draft.tags,
                 resources: draft.resources, image_url: draft.imageUrl
             ))
-            asset.name = draft.name
-            asset.ticker = draft.ticker
-            asset.summary = draft.summary
-            asset.description = draft.description
-            asset.tags = draft.tags
-            asset.resources = draft.resources
-            asset.imageUrl = draft.imageUrl
             Haptics.success()
             toast.show("Asset updated", .success)
             onChanged()

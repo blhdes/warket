@@ -16,7 +16,7 @@ enum SeedPhraseError: LocalizedError, Equatable {
 /// `src/features/auth/seedPhrase.ts` so existing vaults open unchanged.
 ///
 /// ⚠️ A phrase must NEVER leave the device. Only the resulting hash is sent to
-/// Supabase (via the `x-vault-hash` header).
+/// the warket server (in the `Authorization` header).
 enum SeedPhrase {
 
     /// Generate a random 12-word phrase from the curated `Wordlist`.
@@ -43,13 +43,6 @@ enum SeedPhrase {
             throw SeedPhraseError.invalidWordCount(wordCount)
         }
         let digest = SHA256.hash(data: Data(normalized.utf8))
-        return digest.hexString
-    }
-
-    /// Derive a deterministic, one-way share hash from a vault hash.
-    /// Domain-separated with ":share" so it can't be reversed to the vault hash.
-    static func deriveShareHash(_ vaultHash: String) -> String {
-        let digest = SHA256.hash(data: Data((vaultHash + ":share").utf8))
         return digest.hexString
     }
 }

@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// The editable fields of an asset, passed from the editor back to the caller,
-/// which performs the actual Supabase create/update.
+/// which performs the actual server create/update.
 struct AssetDraft {
     var name: String
     var ticker: String

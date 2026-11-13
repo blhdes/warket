@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Auth gate: shows Unlock until a vault hash exists, then the Lists screen.
+/// Auth gate: shows Unlock until a vault is open, then the Lists screen.
 /// Auto-resumes a remembered session on launch (handled in `Session.init`).
 /// Also hosts the app-wide toast banner.
 struct RootView: View {
@@ -15,16 +15,16 @@ struct RootView: View {
 
     private var gated: some View {
         Group {
-            if let hash = session.vaultHash {
+            if let access = session.access {
                 NavigationStack {
-                    ListsView(vaultHash: hash, readOnly: session.readOnly)
+                    ListsView(access: access)
                 }
-                .id(hash) // fresh repository if a different vault is opened
+                .id(access) // fresh repository if a different vault is opened
             } else {
                 UnlockView()
             }
         }
-        .animation(.snappy, value: session.vaultHash)
+        .animation(.snappy, value: session.access)
         .toastHost()
     }
 }
