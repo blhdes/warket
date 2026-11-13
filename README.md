@@ -72,7 +72,7 @@ The vault hash is stored in `sessionStorage` for the session duration. If "Keep 
 
 ### 3. Read-Only Shared Vaults
 
-Vault owners can generate a **share key** — a deterministic, one-way hash derived from the vault hash using SHA-256 with domain separation (`:share` suffix). This ensures:
+Vault owners can generate a **share key**: a deterministic, one-way hash derived from the vault hash using SHA-256 with domain separation (`:share` suffix). This ensures:
 
 - The share key cannot be reversed to obtain the vault hash
 - The same vault always produces the same share key
@@ -89,15 +89,15 @@ Vault owners can generate a **share key** — a deterministic, one-way hash deri
 ### 4. Import/Export
 
 **Export:**
-- Clicking Export opens the `ExportModal` — choose which lists to include via checkboxes (or "Select all")
+- Clicking Export opens the `ExportModal`: choose which lists to include via checkboxes (or "Select all")
 - Downloads a timestamped JSON file (`warket-export-YYYY-MM-DD.json`) with all selected lists and their assets (name, ticker, tags, summary, description, resources)
-- Position values are excluded from export — order is preserved by array sequence
+- Position values are excluded from export: order is preserved by array sequence
 - Available in both owner and read-only (shared) modes
 
 **Import:**
 - Upload a JSON file via the import button in the vault header
 - Auto-positions new lists after existing ones
-- Same-name lists (case-insensitive) are merged — imported assets are appended after existing assets
+- Same-name lists (case-insensitive) are merged: imported assets are appended after existing assets
 - The server checks the whole file and writes it in one go: a broken file writes nothing
 
 ### 5. Data Model
@@ -139,7 +139,7 @@ Defined in `server/src/db/schema.ts` (D1, SQLite). Data is stored as plain text,
    - Collapsed: drag handle (desktop only), ticker badge (gradient or custom image), name, tags (desktop), resource count
    - Expanded: inline-editable summary, description editor, sortable resources, tags CRUD, delete
    - Hover ticker badge (when expanded) → camera icon overlay → click → add/edit custom logo
-   - Read-only: view-only mode — no edit controls, static tags, plain resource list
+   - Read-only: view-only mode: no edit controls, static tags, plain resource list
 5. **Drag & Drop**: Lists, asset cards, and resources can be reordered by dragging (pointer or touch). Drag handles appear on hover (desktop). Reordering is disabled when search/tag filters are active, when any asset card is expanded, or in read-only mode.
 6. **Edit Lists**: Pencil icon on list cards opens an edit modal for renaming, editing tags, or deleting the list (with confirmation).
 7. **Theme Toggle**: Sun/moon icon in the top-right corner. Dark mode by default. Smooth 250ms cross-fade transition with flash prevention on page load.
@@ -170,7 +170,7 @@ Defined in `server/src/db/schema.ts` (D1, SQLite). Data is stored as plain text,
 
 ### Logo
 
-Ascending W — an asymmetric double-bottom chart pattern where the right arm rises higher than the left, communicating bullish breakout momentum. Monochrome, uses `currentColor` for theme compatibility.
+Ascending W: an asymmetric double-bottom chart pattern where the right arm rises higher than the left, communicating bullish breakout momentum. Monochrome, uses `currentColor` for theme compatibility.
 
 ### Favicon
 
@@ -179,7 +179,7 @@ Transparent background with a subtle teal-tinted rounded rectangle (`fill="#2a9d
 ### Layout
 
 - **Desktop max-width**: 1400px for vault and shared vault pages
-- **Grid**: Responsive grid — 1 column (mobile) → 2 columns (sm) → 3 columns (lg) → 4 columns (xl)
+- **Grid**: Responsive grid: 1 column (mobile) → 2 columns (sm) → 3 columns (lg) → 4 columns (xl)
 
 ### Border Radii
 - `--radius-sm`: 2px
@@ -280,20 +280,20 @@ A native **Swift/SwiftUI** port lives alongside the web app in `warket-ios/` (Xc
 
 ```
 warket-ios/warket/
-├── Core/          — APIClient (server calls), VaultRepository, Session, VaultTransfer (JSON export/import), TitleFetcher
+├── Core/          · APIClient (server calls), VaultRepository, Session, VaultTransfer (JSON export/import), TitleFetcher
 ├── Features/
-│   ├── Unlock/    — seed-phrase entry, generate/paste, shared-vault entry sheet
-│   ├── Lists/     — list grid, share/export/import actions
-│   └── Assets/    — asset detail, add-resource sheet
+│   ├── Unlock/    · seed-phrase entry, generate/paste, shared-vault entry sheet
+│   ├── Lists/     · list grid, share/export/import actions
+│   └── Assets/    · asset detail, add-resource sheet
 ├── Models/
-├── Theme/         — Liquid-Glass-over-mesh visual language, system-adaptive light/dark tokens
+├── Theme/         · Liquid-Glass-over-mesh visual language, system-adaptive light/dark tokens
 └── Components/
 ```
 
 **Shipped so far:**
-- **MVP** — vault unlock (generate/paste seed phrase), list + asset CRUD, matching the web app's core flow.
-- **Liquid Glass redesign** — UI rebuilt around Liquid Glass surfaces over an animated mesh background.
-- **Web parity pass** — read-only sharing (the server checks the share key and refuses writes), JSON export/import (`VaultTransfer`, byte-compatible with the web app's export format), system-adaptive theme (follows `UITraitCollection.userInterfaceStyle` — no manual toggle yet, unlike the web app's switch), and resource-title auto-fetch (`TitleFetcher`: direct `URLSession` fetch, no CORS restriction on native, with `api.microlink.io` as a fallback for JS-rendered pages).
+- **MVP**: vault unlock (generate/paste seed phrase), list + asset CRUD, matching the web app's core flow.
+- **Liquid Glass redesign**: UI rebuilt around Liquid Glass surfaces over an animated mesh background.
+- **Web parity pass**: read-only sharing (the server checks the share key and refuses writes), JSON export/import (`VaultTransfer`, byte-compatible with the web app's export format), system-adaptive theme (follows `UITraitCollection.userInterfaceStyle`, no manual toggle yet, unlike the web app's switch), and resource-title auto-fetch (`TitleFetcher`: direct `URLSession` fetch, no CORS restriction on native, with `api.microlink.io` as a fallback for JS-rendered pages).
 
 Open it with `cd warket-ios && open warket.xcodeproj`.
 
@@ -401,9 +401,9 @@ npm run preview  # Preview production build
 ### Expanding Assets
 
 Click any asset card to expand it. You'll see:
-- **Summary** (if set) — click the pencil icon to edit inline, or click "+ Add Summary" if empty
+- **Summary** (if set): click the pencil icon to edit inline, or click "+ Add Summary" if empty
 - **Description**: Click "View / Edit" to open the markdown editor
-- **Resources**: URLs to external links (investor decks, articles, etc.) — drag to reorder on desktop
+- **Resources**: URLs to external links (investor decks, articles, etc.), drag to reorder on desktop
 - **Tags**: Add/remove tags for filtering
 - **Custom Image**: Hover over the ticker badge → camera icon → click → paste logo URL
 
@@ -416,26 +416,26 @@ Click the **Lock** button (top-right) to:
 
 ### Keeping Your Session Open
 
-Check the **"Keep session open"** checkbox on the landing page before accessing your vault. This saves your vault hash in `localStorage`, so you'll be automatically redirected to your vault when you revisit the app — even after closing the browser. Clicking "Lock" ends the persistent session.
+Check the **"Keep session open"** checkbox on the landing page before accessing your vault. This saves your vault hash in `localStorage`, so you'll be automatically redirected to your vault when you revisit the app, even after closing the browser. Clicking "Lock" ends the persistent session.
 
 ---
 
 ## Security Considerations
 
 - **Seed phrase is everything**: Losing your seed phrase = permanent loss of vault access.
-- **No password recovery**: There is no "forgot password" — the seed phrase IS the password.
+- **No password recovery**: There is no "forgot password": the seed phrase IS the password.
 - **Client-side hashing**: SHA-256 is computed in the browser. The hash is deterministic (same phrase = same hash).
 - **Share keys are one-way**: A share key is derived from the vault hash using domain-separated SHA-256 (`hash + ":share"`). It cannot be reversed to obtain the vault hash or seed phrase.
 - **Read-only enforcement**: The server answers every write made with a share key with an error (403). Hiding the edit buttons is only for comfort.
 - **No keys stored**: The server keeps SHA-256 fingerprints of vault hashes and share keys, never the keys themselves. Vault data is stored as plain text, kept apart per vault.
 - **Rate limits**: The server limits how many requests one address can make per minute.
-- **HTTPS required**: Always serve over HTTPS in production to protect seed phrases in transit.
+- **HTTPS required**: Always serve over HTTPS in production. The seed phrase never leaves the device, but the vault hash and share keys travel in every request.
 
 ---
 
 ## Roadmap / Future Enhancements
 
-- **Encrypted notes**: End-to-end encrypted notes per asset (using seed phrase as key)
+- **Notes the server cannot read** (idea, not built): notes locked on the device with a key made from the seed phrase. Today all vault data is stored as plain text.
 - **Multi-vault support**: Manage multiple vaults from one session
 - **Price tracking**: Integrate live price APIs for stocks/crypto
 - **Collaborative vaults**: Shared seed phrase with write access and role management
@@ -459,8 +459,8 @@ MIT License. See `LICENSE` file for details.
 - **Design & Development**: Built with care for privacy and premium UX
 - **Fonts**: Instrument Serif (Google Fonts), General Sans (Fontshare), JetBrains Mono
 - **Icons**: Heroicons
-- **Logo**: Custom ascending W — asymmetric double-bottom chart pattern
+- **Logo**: Custom ascending W: asymmetric double-bottom chart pattern
 
 ---
 
-**warket** — Your market, your vault.
+**warket**: Your market, your vault.
