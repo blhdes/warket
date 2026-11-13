@@ -18,8 +18,11 @@ filtering, on the brand's embedded fonts.
 
 - **Unlock**: enter or generate a 12-word phrase. The phrase is hashed locally
   and **never leaves the device**; only the hash is sent to the server, in the
-  `Authorization` header. "Keep me signed in" remembers the hash across
-  launches. A share key pasted here opens that vault read-only.
+  `Authorization` header. A generated phrase must be confirmed as saved
+  ("I saved my 12 words") before the vault opens; Copy keeps the words on this
+  iPhone only and clears them after 2 minutes. "Keep me signed in" remembers
+  the hash across launches, in the Keychain (this device only, not in backups).
+  A share key pasted here opens that vault read-only.
 - **Lists**: native List *or* 2-column grid (persisted toggle), create, edit,
   delete, search (by list name *or* a contained asset's name/ticker), tag-chip
   filtering, drag-reorder. If loading fails, a "Try again" button reloads.
@@ -35,11 +38,16 @@ filtering, on the brand's embedded fonts.
   every change made with a share key.
 - **Export and import**: JSON files compatible with the web app. Import merges
   lists with the same name and is all or nothing: a broken file writes nothing.
+- **Account**: About screen (version, how the vault works, Privacy Policy and
+  Support links, also reachable from the unlock screen). Lock vault asks first.
+  Delete vault erases everything on the server after two confirmations.
+- **Errors**: people see plain sentences (the server's own message, "No
+  connection", or a generic one). The technical error goes to the log.
 - **Design**: Liquid Glass surfaces floating over an animated "market pulse"
   mesh background (the native echo of the web landing), a bold gradient unlock
   CTA, and subtle entrance and symbol motion. Gracefully degrades on older OSes
   and freezes the background under Reduce Motion.
-- Haptics, toast banners, dark theme.
+- Haptics, toast banners, light and dark mode (follows the system).
 
 ## Tech
 
@@ -116,7 +124,3 @@ xcodebuild -project warket.xcodeproj -scheme warket -destination 'generic/platfo
 ```
 
 Run the tests on your iPhone from Xcode: pick the iPhone, press ⌘U.
-
-## Not yet done
-
-Light mode (the app is locked to dark for now).

@@ -203,7 +203,7 @@ struct AssetDetailView: View {
             return true
         } catch {
             Haptics.error()
-            toast.show(error.localizedDescription, .error)
+            toast.show(error.userMessage, .error)
             return false
         }
     }
@@ -217,7 +217,7 @@ struct AssetDetailView: View {
             dismiss()
         } catch {
             Haptics.error()
-            toast.show(error.localizedDescription, .error)
+            toast.show(error.userMessage, .error)
         }
     }
 }

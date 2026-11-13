@@ -34,6 +34,7 @@ struct ListsView: View {
     @State private var exportDoc: JSONDocument?
     @State private var showExporter = false
     @State private var showImporter = false
+    @State private var accountPrompt: AccountPrompt?
 
     private enum Phase: Equatable { case loading, loaded, failed(String) }
 
@@ -90,7 +91,7 @@ struct ListsView: View {
             defaultFilename: exportFilename
         ) { result in
             if case .failure(let error) = result {
-                toast.show(error.localizedDescription, .error)
+                toast.show(error.userMessage, .error)
             } else {
                 Haptics.success()
                 toast.show("Vault exported", .success)
@@ -102,6 +103,7 @@ struct ListsView: View {
         ) { result in
             Task { await handleImport(result) }
         }
+        .vaultAccountActions($accountPrompt, repo: repo)
     }
 
     // MARK: - Content
@@ -260,9 +262,20 @@ struct ListsView: View {
                     }
                 }
                 Divider()
-                Button(role: .destructive) { session.signOut() } label: {
-                    Label(readOnly ? "Exit shared vault" : "Lock vault",
-                          systemImage: readOnly ? "xmark.circle" : "lock.fill")
+                Button { accountPrompt = .about } label: {
+                    Label("About", systemImage: "info.circle")
+                }
+                if readOnly {
+                    Button(role: .destructive) { session.signOut() } label: {
+                        Label("Exit shared vault", systemImage: "xmark.circle")
+                    }
+                } else {
+                    Button(role: .destructive) { accountPrompt = .lock } label: {
+                        Label("Lock vault", systemImage: "lock.fill")
+                    }
+                    Button(role: .destructive) { accountPrompt = .deleteVault } label: {
+                        Label("Delete vault\u{2026}", systemImage: "trash")
+                    }
                 }
             } label: {
                 Image(systemName: "ellipsis.circle")
@@ -313,7 +326,7 @@ struct ListsView: View {
         } catch is CancellationError {
             return // the screen closed or a newer load replaced this one
         } catch {
-            phase = .failed(error.localizedDescription)
+            phase = .failed(error.userMessage)
             return
         }
         // Search by asset name still works without the index, so a failure here only logs.
@@ -334,7 +347,7 @@ struct ListsView: View {
             return true
         } catch {
             Haptics.error()
-            toast.show(error.localizedDescription, .error)
+            toast.show(error.userMessage, .error)
             return false
         }
     }
@@ -348,7 +361,7 @@ struct ListsView: View {
             return true
         } catch {
             Haptics.error()
-            toast.show(error.localizedDescription, .error)
+            toast.show(error.userMessage, .error)
             return false
         }
     }
@@ -362,7 +375,7 @@ struct ListsView: View {
             await load()
         } catch {
             Haptics.error()
-            toast.show(error.localizedDescription, .error)
+            toast.show(error.userMessage, .error)
         }
     }
 
@@ -377,7 +390,7 @@ struct ListsView: View {
             } catch {
                 // Cancelled means a newer drag replaced this one and will save the order itself.
                 guard !Task.isCancelled else { return }
-                toast.show(error.localizedDescription, .error)
+                toast.show(error.userMessage, .error)
                 await load() // nothing was saved, so show the server's order again
             }
         }
@@ -403,7 +416,7 @@ struct ListsView: View {
             showExporter = true
         } catch {
             Haptics.error()
-            toast.show(error.localizedDescription, .error)
+            toast.show(error.userMessage, .error)
         }
     }
 
@@ -412,7 +425,7 @@ struct ListsView: View {
         switch result {
         case .success(let picked): url = picked
         case .failure(let error):
-            toast.show(error.localizedDescription, .error)
+            toast.show(error.userMessage, .error)
             return
         }
 
@@ -435,7 +448,7 @@ struct ListsView: View {
             toast.show("Invalid or unrecognized file", .error)
         } catch {
             Haptics.error()
-            toast.show(error.localizedDescription, .error)
+            toast.show(error.userMessage, .error)
         }
     }
 
@@ -449,7 +462,7 @@ struct ListsView: View {
             toast.show("Share key copied to clipboard", .success)
         } catch {
             Haptics.error()
-            toast.show(error.localizedDescription, .error)
+            toast.show(error.userMessage, .error)
         }
     }
 }

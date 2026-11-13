@@ -10,6 +10,10 @@ struct UnlockView: View {
     @State private var phrase = ""
     @State private var remember = true
     @State private var errorMessage: String?
+    /// The last generated phrase (normalized) and whether its owner said it is saved.
+    @State private var generatedPhrase: String?
+    @State private var phraseSaved = false
+    @State private var showingAbout = false
 
     @State private var appeared = false
     @State private var generateTick = 0
@@ -29,6 +33,7 @@ struct UnlockView: View {
                         Spacer(minLength: 48)
                         cluster
                         Spacer(minLength: 24)
+                        aboutButton
                     }
                     .frame(minHeight: proxy.size.height, alignment: .center)
                     .frame(maxWidth: 440)
@@ -47,6 +52,7 @@ struct UnlockView: View {
             }
         }
         .sheet(isPresented: $showingShareEntry) { shareEntrySheet }
+        .sheet(isPresented: $showingAbout) { AboutView() }
     }
 
     private var cluster: some View {
@@ -56,6 +62,10 @@ struct UnlockView: View {
             VStack(spacing: 14) {
                 phraseField
                 generateButton
+                if needsBackup {
+                    PhraseBackupNotice(phrase: phrase, saved: $phraseSaved)
+                        .transition(.opacity.combined(with: .move(edge: .top)))
+                }
                 if let errorMessage {
                     Label(errorMessage, systemImage: "exclamationmark.triangle.fill")
                         .font(.footnote)
@@ -70,6 +80,18 @@ struct UnlockView: View {
         }
         .opacity(appeared ? 1 : 0)
         .offset(y: appeared ? 0 : 14)
+        .animation(.snappy(duration: 0.3), value: needsBackup)
+    }
+
+    private var aboutButton: some View {
+        Button { showingAbout = true } label: {
+            Text("About & Privacy")
+                .font(.footnote)
+                .foregroundStyle(Theme.textTertiary)
+                .padding(.vertical, 8)
+        }
+        .buttonStyle(.plain)
+        .padding(.bottom, 8)
     }
 
     private var sharedVaultButton: some View {
@@ -240,21 +262,32 @@ struct UnlockView: View {
     }
 
     private var canAccess: Bool {
-        !phrase.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        !phrase.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && (!needsBackup || phraseSaved)
+    }
+
+    /// A generated phrase must be confirmed as saved. Once the words are edited it
+    /// counts as a typed phrase (spaces and capitals do not count as edits).
+    private var needsBackup: Bool {
+        generatedPhrase != nil && SeedPhrase.normalize(phrase) == generatedPhrase
     }
 
     private func generate() {
         phrase = SeedPhrase.generate()
+        generatedPhrase = phrase
+        phraseSaved = false
         errorMessage = nil
         generateTick += 1
     }
 
     private func access() {
+        guard canAccess else { return }
         do {
             let hash = try SeedPhrase.hash(phrase)
             session.unlock(hash: hash, remember: remember)
+        } catch let error as SeedPhraseError {
+            errorMessage = error.localizedDescription // the word-count message, already plain
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = error.userMessage
         }
     }
 
@@ -276,7 +309,7 @@ struct UnlockView: View {
             showingShareEntry = false
             session.openShared(shareKey: key)
         } catch {
-            shareError = error.localizedDescription
+            shareError = error.userMessage
             Haptics.error()
         }
     }
@@ -285,4 +318,5 @@ struct UnlockView: View {
 #Preview {
     UnlockView()
         .environment(Session())
+        .environment(ToastCenter())
 }

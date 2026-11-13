@@ -195,7 +195,7 @@ struct AssetsView: View {
         } catch is CancellationError {
             return // the screen closed or a newer load replaced this one
         } catch {
-            phase = .failed(error.localizedDescription)
+            phase = .failed(error.userMessage)
         }
     }
 
@@ -217,7 +217,7 @@ struct AssetsView: View {
             return true
         } catch {
             Haptics.error()
-            toast.show(error.localizedDescription, .error)
+            toast.show(error.userMessage, .error)
             return false
         }
     }
@@ -235,7 +235,7 @@ struct AssetsView: View {
             return true
         } catch {
             Haptics.error()
-            toast.show(error.localizedDescription, .error)
+            toast.show(error.userMessage, .error)
             return false
         }
     }
@@ -249,7 +249,7 @@ struct AssetsView: View {
             await load()
         } catch {
             Haptics.error()
-            toast.show(error.localizedDescription, .error)
+            toast.show(error.userMessage, .error)
         }
     }
 
@@ -264,7 +264,7 @@ struct AssetsView: View {
             } catch {
                 // Cancelled means a newer drag replaced this one and will save the order itself.
                 guard !Task.isCancelled else { return }
-                toast.show(error.localizedDescription, .error)
+                toast.show(error.userMessage, .error)
                 await load() // nothing was saved, so show the server's order again
             }
         }
