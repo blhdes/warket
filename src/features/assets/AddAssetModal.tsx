@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Asset, Resource } from '../../lib/types'
+import { errorMessage, type VaultApi } from '../../lib/api'
 import { faviconUrl, extractHostname } from '../../lib/favicon'
 import { fetchPageTitle } from '../../lib/fetchTitle'
 import Modal from '../../components/Modal'
@@ -10,12 +10,12 @@ import { useFormNavigation } from '../../hooks/useFormNavigation'
 interface Props {
   open: boolean
   onClose: () => void
-  db: SupabaseClient
+  api: VaultApi
   listId: string
   onCreated: (asset: Asset) => void
 }
 
-export default function AddAssetModal({ open, onClose, db, listId, onCreated }: Props) {
+export default function AddAssetModal({ open, onClose, api, listId, onCreated }: Props) {
   const [name, setName] = useState('')
   const [ticker, setTicker] = useState('')
   const [summary, setSummary] = useState('')
@@ -100,28 +100,25 @@ export default function AddAssetModal({ open, onClose, db, listId, onCreated }: 
       .filter(Boolean)
 
     setSaving(true)
-    const { data, error } = await db
-      .from('assets')
-      .insert({
-        list_id: listId,
+    let created: Asset
+    try {
+      created = await api.createAsset(listId, {
         name: name.trim(),
         ticker: ticker.trim().toUpperCase(),
         summary: summary.trim(),
         tags,
         resources,
       })
-      .select()
-      .single()
-
-    setSaving(false)
-
-    if (error) {
-      toast(error.message)
+    } catch (e) {
+      console.error(`Could not add asset to list ${listId}`, e)
+      toast(errorMessage(e))
       return
+    } finally {
+      setSaving(false)
     }
 
     toast('Asset added', 'success')
-    onCreated(data as Asset)
+    onCreated(created)
     reset()
     onClose()
   }

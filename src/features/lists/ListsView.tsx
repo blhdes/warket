@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import type { SupabaseClient } from '@supabase/supabase-js'
-import type { VaultList } from '../../lib/types'
+import type { ListWithCount, VaultList } from '../../lib/types'
+import { errorMessage, type VaultApi } from '../../lib/api'
 import {
   DndContext,
   DragOverlay,
@@ -23,20 +23,16 @@ import { CSS } from '@dnd-kit/utilities'
 import Modal from '../../components/Modal'
 import { ListCardSkeleton } from '../../components/Skeleton'
 import { toast } from '../../components/Toast'
-import { updatePositions } from '../../lib/position'
 import { haptic } from '../../lib/haptics'
 import AssetListView from '../assets/AssetListView'
 import { useFormNavigation } from '../../hooks/useFormNavigation'
 
-type ListWithCount = VaultList & { asset_count: number }
-
 interface Props {
-  db: SupabaseClient
-  vaultHash: string
-  readOnly?: boolean
+  api: VaultApi
 }
 
-export default function ListsView({ db, vaultHash, readOnly }: Props) {
+export default function ListsView({ api }: Props) {
+  const readOnly = api.readOnly
   const [lists, setLists] = useState<ListWithCount[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -58,43 +54,34 @@ export default function ListsView({ db, vaultHash, readOnly }: Props) {
 
   /* ── Fetch ─────────────────────────────────────────────── */
   const fetchLists = useCallback(async () => {
-    const listRes = await db
-      .from('lists')
-      .select('*, assets(count)')
-      .eq('vault_hash', vaultHash)
-      .order('position', { ascending: true })
-
-    if (listRes.error) {
-      toast(listRes.error.message)
+    let fetched: ListWithCount[]
+    try {
+      fetched = await api.lists()
+    } catch (e) {
+      console.error('Could not load lists', e)
+      toast(errorMessage(e))
       setLoading(false)
       return
     }
 
-    const mapped = (listRes.data ?? []).map((row: any) => ({
-      ...row,
-      asset_count: row.assets?.[0]?.count ?? 0,
-    }))
-
-    setLists(mapped)
+    setLists(fetched)
     setLoading(false)
 
-    // Fetch lightweight asset index for search (non-blocking)
-    const listIds = mapped.map((l: any) => l.id)
-    if (listIds.length > 0) {
-      const assetRes = await db
-        .from('assets')
-        .select('list_id, name, ticker')
-        .in('list_id', listIds)
-
+    // Lightweight asset index for search. Search still works on list names if this fails.
+    if (fetched.length === 0) return
+    try {
+      const rows = await api.assetIndex()
       const idx = new Map<string, { name: string; ticker: string }[]>()
-      for (const a of (assetRes.data ?? []) as { list_id: string; name: string; ticker: string }[]) {
+      for (const a of rows) {
         const arr = idx.get(a.list_id) ?? []
         arr.push({ name: a.name, ticker: a.ticker })
         idx.set(a.list_id, arr)
       }
       setAssetIndex(idx)
+    } catch (e) {
+      console.error('Could not load the asset search index', e)
     }
-  }, [db, vaultHash])
+  }, [api])
 
   useEffect(() => { fetchLists() }, [fetchLists])
 
@@ -125,13 +112,11 @@ export default function ListsView({ db, vaultHash, readOnly }: Props) {
 
   /* ── Create ────────────────────────────────────────────── */
   const handleCreate = async (name: string, tags: string[]) => {
-    const position = lists.length
-    const { error } = await db
-      .from('lists')
-      .insert({ vault_hash: vaultHash, name, tags, position })
-
-    if (error) {
-      toast(error.message)
+    try {
+      await api.createList({ name, tags })
+    } catch (e) {
+      console.error('Could not create list', e)
+      toast(errorMessage(e))
       return
     }
 
@@ -142,31 +127,31 @@ export default function ListsView({ db, vaultHash, readOnly }: Props) {
 
   /* ── Update ────────────────────────────────────────────── */
   const handleUpdateList = async (updated: ListWithCount) => {
-    const { error } = await db
-      .from('lists')
-      .update({ name: updated.name, tags: updated.tags })
-      .eq('id', updated.id)
-
-    if (error) {
-      toast(error.message)
+    let saved: VaultList
+    try {
+      saved = await api.updateList(updated.id, { name: updated.name, tags: updated.tags })
+    } catch (e) {
+      console.error('Could not update list', e)
+      toast(errorMessage(e))
       return
     }
 
     toast('List updated', 'success')
-    setLists(prev => prev.map(l => l.id === updated.id ? updated : l))
+    setLists(prev => prev.map(l => l.id === saved.id ? { ...saved, asset_count: l.asset_count } : l))
     // Also update selectedList if we're editing from inside AssetListView
-    if (selectedList?.id === updated.id) {
-      setSelectedList(updated)
+    if (selectedList?.id === saved.id) {
+      setSelectedList(saved)
     }
     setEditingList(null)
   }
 
   /* ── Delete ────────────────────────────────────────────── */
   const handleDelete = async (id: string) => {
-    const { error } = await db.from('lists').delete().eq('id', id)
-
-    if (error) {
-      toast(error.message)
+    try {
+      await api.deleteList(id)
+    } catch (e) {
+      console.error('Could not delete list', e)
+      toast(errorMessage(e))
       return
     }
 
@@ -198,9 +183,13 @@ export default function ListsView({ db, vaultHash, readOnly }: Props) {
     const reordered = arrayMove(lists, oldIndex, newIndex)
     setLists(reordered)
 
-    // Persist new positions
-    const updates = reordered.map((l, i) => ({ id: l.id, position: i }))
-    await updatePositions(db, 'lists', updates)
+    try {
+      await api.reorderLists(reordered.map(l => l.id))
+    } catch (e) {
+      console.error('Could not save the new list order', e)
+      toast('Could not save the new order')
+      fetchLists()
+    }
   }
 
   const draggedList = activeDragId ? lists.find(l => l.id === activeDragId) : null
@@ -212,7 +201,7 @@ export default function ListsView({ db, vaultHash, readOnly }: Props) {
       <div className={viewDirection === 'forward' ? 'animate-view-enter' : 'animate-view-enter-back'}>
         <AssetListView
           list={selectedList}
-          db={db}
+          api={api}
           onBack={() => { setViewDirection('back'); setSelectedList(null); fetchLists() }}
           onEdit={readOnly ? undefined : () => {
             const full = lists.find(l => l.id === selectedList.id)

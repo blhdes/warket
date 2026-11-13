@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
-import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Asset, Resource } from '../../lib/types'
+import { errorMessage, type AssetInput, type VaultApi } from '../../lib/api'
 import {
   DndContext,
   DragOverlay,
@@ -57,7 +57,7 @@ function DefaultFavicon({ className, style }: { className?: string; style?: Reac
 /* ── Props ───────────────────────────────────────────────── */
 interface Props {
   asset: Asset
-  db: SupabaseClient
+  api: VaultApi
   onUpdate: (updated: Asset) => void
   onDelete: (id: string) => void
   showDragHandle?: boolean
@@ -65,7 +65,7 @@ interface Props {
   readOnly?: boolean
 }
 
-export default function AssetCard({ asset, db, onUpdate, onDelete, showDragHandle, onExpandChange, readOnly }: Props) {
+export default function AssetCard({ asset, api, onUpdate, onDelete, showDragHandle, onExpandChange, readOnly }: Props) {
   const [expanded, setExpanded] = useState(false)
 
   const toggleExpanded = () => {
@@ -89,17 +89,22 @@ export default function AssetCard({ asset, db, onUpdate, onDelete, showDragHandl
     useSensor(TouchSensor, { activationConstraint: { delay: 400, tolerance: 8 } }),
   )
 
+  /** Saves a change to this asset. Returns the saved asset, or null after telling the user it failed. */
+  const saveAsset = async (patch: Partial<AssetInput>, what: string): Promise<Asset | null> => {
+    try {
+      return await api.updateAsset(asset.id, patch)
+    } catch (e) {
+      console.error(`Could not save ${what} for asset ${asset.id}`, e)
+      toast(errorMessage(e))
+      return null
+    }
+  }
+
   /* ── Resources ─────────────────────────────────────────── */
   const handleRemoveResource = async (index: number) => {
-    const updated = asset.resources.filter((_, i) => i !== index)
-
-    const { error } = await db
-      .from('assets')
-      .update({ resources: updated })
-      .eq('id', asset.id)
-
-    if (error) { toast(error.message); return }
-    onUpdate({ ...asset, resources: updated })
+    const saved = await saveAsset({ resources: asset.resources.filter((_, i) => i !== index) }, 'resources')
+    if (!saved) return
+    onUpdate(saved)
   }
 
   const handleReorderResources = async (event: DragEndEvent) => {
@@ -115,11 +120,9 @@ export default function AssetCard({ asset, db, onUpdate, onDelete, showDragHandl
     const reordered = arrayMove(resources, oldIndex, newIndex)
     onUpdate({ ...asset, resources: reordered })
 
-    const { error } = await db
-      .from('assets')
-      .update({ resources: reordered })
-      .eq('id', asset.id)
-    if (error) toast(error.message)
+    const saved = await saveAsset({ resources: reordered }, 'resource order')
+    // On failure, put the resources back in the order the server still has.
+    if (!saved) onUpdate(asset)
   }
 
   /* ── Tags CRUD ─────────────────────────────────────────── */
@@ -127,59 +130,44 @@ export default function AssetCard({ asset, db, onUpdate, onDelete, showDragHandl
     const tag = tagInput.trim().toLowerCase()
     if (!tag || asset.tags?.includes(tag)) { setTagInput(''); return }
 
-    const updated = [...(asset.tags ?? []), tag]
-
-    const { error } = await db
-      .from('assets')
-      .update({ tags: updated })
-      .eq('id', asset.id)
-
-    if (error) { toast(error.message); return }
-    onUpdate({ ...asset, tags: updated })
+    const saved = await saveAsset({ tags: [...(asset.tags ?? []), tag] }, 'tags')
+    if (!saved) return
+    onUpdate(saved)
     setTagInput('')
   }
 
   const handleRemoveTag = async (tag: string) => {
-    const updated = (asset.tags ?? []).filter(t => t !== tag)
-
-    const { error } = await db
-      .from('assets')
-      .update({ tags: updated })
-      .eq('id', asset.id)
-
-    if (error) { toast(error.message); return }
-    onUpdate({ ...asset, tags: updated })
+    const saved = await saveAsset({ tags: (asset.tags ?? []).filter(t => t !== tag) }, 'tags')
+    if (!saved) return
+    onUpdate(saved)
   }
 
   /* ── Delete ────────────────────────────────────────────── */
   const handleDelete = async () => {
-    const { error } = await db.from('assets').delete().eq('id', asset.id)
-    if (error) { toast(error.message); return }
+    try {
+      await api.deleteAsset(asset.id)
+    } catch (e) {
+      console.error(`Could not delete asset ${asset.id}`, e)
+      toast(errorMessage(e))
+      return
+    }
     onDelete(asset.id)
     toast('Asset deleted', 'success')
   }
 
   /* ── Image ────────────────────────────────────────────── */
   const handleSaveImage = async (url: string) => {
-    const value = url.trim() || null
-    const { error } = await db
-      .from('assets')
-      .update({ image_url: value })
-      .eq('id', asset.id)
-    if (error) { toast(error.message); return }
-    onUpdate({ ...asset, image_url: value ?? undefined })
-    toast(value ? 'Image saved' : 'Image removed', 'success')
+    const saved = await saveAsset({ image_url: url.trim() || null }, 'image')
+    if (!saved) return
+    onUpdate(saved)
+    toast(saved.image_url ? 'Image saved' : 'Image removed', 'success')
   }
 
   /* ── Summary ──────────────────────────────────────────── */
   const handleSaveSummary = async () => {
-    const trimmed = summaryDraft.trim()
-    const { error } = await db
-      .from('assets')
-      .update({ summary: trimmed })
-      .eq('id', asset.id)
-    if (error) { toast(error.message); return }
-    onUpdate({ ...asset, summary: trimmed })
+    const saved = await saveAsset({ summary: summaryDraft.trim() }, 'summary')
+    if (!saved) return
+    onUpdate(saved)
     setEditingSummary(false)
   }
 
@@ -601,7 +589,7 @@ export default function AssetCard({ asset, db, onUpdate, onDelete, showDragHandl
       open={descModalOpen}
       onClose={() => setDescModalOpen(false)}
       asset={asset}
-      db={db}
+      api={api}
       onUpdate={onUpdate}
       readOnly={readOnly}
     />
@@ -611,7 +599,7 @@ export default function AssetCard({ asset, db, onUpdate, onDelete, showDragHandl
           open={resourceModalOpen}
           onClose={() => setResourceModalOpen(false)}
           asset={asset}
-          db={db}
+          api={api}
           onUpdate={onUpdate}
         />
         <ImageUrlModal
@@ -707,7 +695,7 @@ function ImageUrlModal({
 }: {
   open: boolean
   onClose: () => void
-  currentUrl?: string
+  currentUrl: string | null
   onSave: (url: string) => Promise<void>
 }) {
   const [url, setUrl] = useState(currentUrl ?? '')

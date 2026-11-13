@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
-import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Asset, VaultList } from '../../lib/types'
+import { errorMessage, type VaultApi } from '../../lib/api'
 import {
   DndContext,
   DragOverlay,
@@ -24,19 +24,17 @@ import AssetCard from './AssetCard'
 import AddAssetModal from './AddAssetModal'
 import { Skeleton } from '../../components/Skeleton'
 import { toast } from '../../components/Toast'
-import { updatePositions } from '../../lib/position'
-import { fetchAssetsForList } from '../../lib/queries'
 import { haptic } from '../../lib/haptics'
 
 interface Props {
   list: VaultList
-  db: SupabaseClient
+  api: VaultApi
   onBack: () => void
   onEdit?: () => void
   readOnly?: boolean
 }
 
-export default function AssetListView({ list, db, onBack, onEdit, readOnly }: Props) {
+export default function AssetListView({ list, api, onBack, onEdit, readOnly }: Props) {
   const [assets, setAssets] = useState<Asset[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -53,17 +51,14 @@ export default function AssetListView({ list, db, onBack, onEdit, readOnly }: Pr
 
   /* ── Fetch ─────────────────────────────────────────────── */
   const fetchAssets = useCallback(async () => {
-    const { data, error } = await fetchAssetsForList(db, list.id)
-
-    if (error) {
-      toast(error.message)
-      setLoading(false)
-      return
+    try {
+      setAssets(await api.assets(list.id))
+    } catch (e) {
+      console.error(`Could not load assets for list ${list.id}`, e)
+      toast(errorMessage(e))
     }
-
-    setAssets(data as Asset[])
     setLoading(false)
-  }, [db, list.id])
+  }, [api, list.id])
 
   useEffect(() => { fetchAssets() }, [fetchAssets])
 
@@ -100,8 +95,9 @@ export default function AssetListView({ list, db, onBack, onEdit, readOnly }: Pr
     setAssets(prev => prev.filter(a => a.id !== id))
   }
 
+  // The server places new assets last (decision D4), so show them last too.
   const handleCreated = (asset: Asset) => {
-    setAssets(prev => [asset, ...prev])
+    setAssets(prev => [...prev, asset])
   }
 
   /* ── DnD handlers ──────────────────────────────────────── */
@@ -122,8 +118,13 @@ export default function AssetListView({ list, db, onBack, onEdit, readOnly }: Pr
     const reordered = arrayMove(assets, oldIndex, newIndex)
     setAssets(reordered)
 
-    const updates = reordered.map((a, i) => ({ id: a.id, position: i }))
-    await updatePositions(db, 'assets', updates)
+    try {
+      await api.reorderAssets(list.id, reordered.map(a => a.id))
+    } catch (e) {
+      console.error(`Could not save the new asset order for list ${list.id}`, e)
+      toast('Could not save the new order')
+      fetchAssets()
+    }
   }
 
   const draggedAsset = activeDragId ? assets.find(a => a.id === activeDragId) : null
@@ -291,7 +292,7 @@ export default function AssetListView({ list, db, onBack, onEdit, readOnly }: Pr
                 <SortableAssetWrapper
                   key={asset.id}
                   asset={asset}
-                  db={db}
+                  api={api}
                   onUpdate={handleUpdate}
                   onDelete={handleDelete}
                   isDragDisabled={isDragDisabled}
@@ -341,7 +342,7 @@ export default function AssetListView({ list, db, onBack, onEdit, readOnly }: Pr
         <AddAssetModal
           open={modalOpen}
           onClose={() => setModalOpen(false)}
-          db={db}
+          api={api}
           listId={list.id}
           onCreated={handleCreated}
         />
@@ -354,7 +355,7 @@ export default function AssetListView({ list, db, onBack, onEdit, readOnly }: Pr
 
 function SortableAssetWrapper({
   asset,
-  db,
+  api,
   onUpdate,
   onDelete,
   isDragDisabled,
@@ -362,7 +363,7 @@ function SortableAssetWrapper({
   readOnly,
 }: {
   asset: Asset
-  db: SupabaseClient
+  api: VaultApi
   onUpdate: (updated: Asset) => void
   onDelete: (id: string) => void
   isDragDisabled: boolean
@@ -391,7 +392,7 @@ function SortableAssetWrapper({
     <div ref={setNodeRef} style={style} {...dragProps}>
       <AssetCard
         asset={asset}
-        db={db}
+        api={api}
         onUpdate={onUpdate}
         onDelete={onDelete}
         showDragHandle={!isDragDisabled}

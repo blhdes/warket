@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { generateSeedPhrase, hashSeedPhrase } from '../features/auth/seedPhrase'
-import { getSupabase } from '../lib/supabase'
-import { resolveShareKey } from '../lib/queries'
+import { ApiError, createVaultApi } from '../lib/api'
 import Logo from '../components/Logo'
 import ThemeToggle from '../components/ThemeToggle'
 import MarketPulse from '../components/MarketPulse'
@@ -56,19 +55,20 @@ export default function LandingPage() {
 
     setInputError('')
 
-    // Detect share key (64-char hex) — verify it exists in vault_shares
+    // Detect share key (64-char hex) and ask the server whether it exists.
     if (HEX_64.test(input)) {
+      const shareKey = input.toLowerCase()
       setIsLoading(true)
       try {
-        const { data, error } = await resolveShareKey(getSupabase(), input)
-
-        if (error || !data) {
+        await createVaultApi({ kind: 'shared', shareKey }).session()
+        navigate(`/shared/${shareKey}`)
+      } catch (e) {
+        console.error('Could not verify the share key', e)
+        if (e instanceof ApiError && e.status === 404) {
           setInputError('Share key not found. Only existing share keys are accepted.')
-          return
+        } else {
+          setInputError('Failed to verify share key. Please try again.')
         }
-        navigate(`/shared/${input}`)
-      } catch {
-        setInputError('Failed to verify share key. Please try again.')
       } finally {
         setIsLoading(false)
       }

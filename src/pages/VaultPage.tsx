@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router'
-import { getSupabase, vaultClient } from '../lib/supabase'
-import { deriveShareHash } from '../features/auth/seedPhrase'
-import { importVault, validateImportData } from '../lib/vaultExport'
+import { createVaultApi, errorMessage } from '../lib/api'
+import { validateImportData, type VaultExport } from '../lib/vaultExport'
 import { toast } from '../components/Toast'
 import ToastContainer from '../components/Toast'
 import ListsView from '../features/lists/ListsView'
@@ -13,7 +12,6 @@ import ThemeToggle from '../components/ThemeToggle'
 export default function VaultPage() {
   const { hash } = useParams<{ hash: string }>()
   const navigate = useNavigate()
-  const [supabaseError, setSupabaseError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const [listKey, setListKey] = useState(0)
   const [exportModalOpen, setExportModalOpen] = useState(false)
@@ -33,17 +31,9 @@ export default function VaultPage() {
     }
   }, [storedHash, navigate])
 
-  const db = useMemo(() => {
-    if (!hash) return null
-    try {
-      return vaultClient(hash)
-    } catch (e) {
-      setSupabaseError(e instanceof Error ? e.message : 'Failed to connect')
-      return null
-    }
-  }, [hash])
+  const api = useMemo(() => (hash ? createVaultApi({ kind: 'owner', vaultHash: hash }) : null), [hash])
 
-  if (!storedHash || !hash) return null
+  if (!storedHash || !hash || !api) return null
 
   const truncatedHash = `${hash.slice(0, 8)}...${hash.slice(-4)}`
 
@@ -61,32 +51,28 @@ export default function VaultPage() {
     try {
       // Clipboard write must be initiated within the user gesture. Awaiting async
       // work first loses that context, so we pass ClipboardItem a Promise that
-      // resolves the content after the Supabase upsert completes.
+      // resolves the content once the server has created (or kept) the share.
       const clipContent: Promise<Blob> = (async () => {
-        const shareHash = await deriveShareHash(hash)
-        const supabase = getSupabase()
-        const { error } = await supabase
-          .from('vault_shares')
-          .upsert({ vault_hash: hash, share_hash: shareHash }, { onConflict: 'vault_hash' })
-        if (error) throw new Error(error.message)
-        return new Blob([shareHash], { type: 'text/plain' })
+        const { share_key } = await api.share()
+        return new Blob([share_key], { type: 'text/plain' })
       })()
 
       await navigator.clipboard.write([new ClipboardItem({ 'text/plain': clipContent })])
       toast('Share key copied to clipboard', 'success')
     } catch (e) {
-      toast(e instanceof Error ? e.message : 'Failed to generate share key')
+      console.error('Could not create or copy the share key', e)
+      toast(errorMessage(e, 'Failed to generate share key'))
     }
   }
 
   const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (!file || !db) return
+    if (!file) return
     e.target.value = ''
 
     try {
       const text = await file.text()
-      const data = JSON.parse(text)
+      const data: unknown = JSON.parse(text)
 
       const validation = validateImportData(data)
       if (!validation.valid) {
@@ -94,14 +80,16 @@ export default function VaultPage() {
         return
       }
 
-      const result = await importVault(db, hash, data)
-      toast(`Imported ${result.listsImported} lists, ${result.assetsImported} assets`, 'success')
+      // The server checks every field again and imports all or nothing.
+      const result = await api.importVault(data as VaultExport)
+      toast(`Imported ${result.lists_imported} lists, ${result.assets_imported} assets`, 'success')
       setListKey(k => k + 1)
     } catch (e) {
+      console.error('Import failed', e)
       if (e instanceof SyntaxError) {
         toast('Invalid JSON file')
       } else {
-        toast(e instanceof Error ? e.message : 'Import failed')
+        toast(errorMessage(e, 'Import failed'))
       }
     }
   }
@@ -239,32 +227,14 @@ export default function VaultPage() {
         className="flex-1 overflow-y-auto overflow-x-hidden w-full mx-auto px-4 py-6"
         style={{ maxWidth: '1400px', paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom))', overscrollBehavior: 'none' }}
       >
-        {supabaseError ? (
-          <div
-            className="p-6 text-center"
-            style={{
-              borderRadius: 'var(--radius-lg)',
-              border: '1px solid var(--error-border)',
-              backgroundColor: 'var(--error-bg)',
-              color: 'var(--error)',
-              fontSize: '0.875rem',
-            }}
-          >
-            <p>{supabaseError}</p>
-          </div>
-        ) : db ? (
-          <ListsView key={listKey} db={db} vaultHash={hash} />
-        ) : null}
+        <ListsView key={listKey} api={api} />
       </main>
 
-      {db && (
-        <ExportModal
-          open={exportModalOpen}
-          onClose={() => setExportModalOpen(false)}
-          db={db}
-          vaultHash={hash}
-        />
-      )}
+      <ExportModal
+        open={exportModalOpen}
+        onClose={() => setExportModalOpen(false)}
+        api={api}
+      />
 
       <ToastContainer />
     </div>

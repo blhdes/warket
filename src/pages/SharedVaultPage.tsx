@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useParams, useNavigate } from 'react-router'
-import { getSupabase, vaultClient } from '../lib/supabase'
-import { resolveShareKey } from '../lib/queries'
+import { ApiError, createVaultApi, errorMessage } from '../lib/api'
 import ToastContainer from '../components/Toast'
 import ListsView from '../features/lists/ListsView'
 import ExportModal from '../components/ExportModal'
@@ -11,44 +10,32 @@ import ThemeToggle from '../components/ThemeToggle'
 export default function SharedVaultPage() {
   const { shareHash } = useParams<{ shareHash: string }>()
   const navigate = useNavigate()
-  const [vaultHash, setVaultHash] = useState<string | null>(null)
   const [resolving, setResolving] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [exportModalOpen, setExportModalOpen] = useState(false)
 
+  // The share key only ever reads. The server refuses any write made with it.
+  const api = useMemo(
+    () => (shareHash ? createVaultApi({ kind: 'shared', shareKey: shareHash.toLowerCase() }) : null),
+    [shareHash],
+  )
+
   useEffect(() => {
-    if (!shareHash) return
+    if (!api) return
 
-    const resolve = async () => {
+    const check = async () => {
       try {
-        const { data, error: fetchError } = await resolveShareKey(getSupabase(), shareHash)
-
-        if (fetchError || !data) {
-          setError('Invalid or expired share key.')
-          setResolving(false)
-          return
-        }
-
-        setVaultHash(data.vault_hash)
-        setResolving(false)
-      } catch {
-        setError('Failed to resolve share key.')
-        setResolving(false)
+        await api.session()
+      } catch (e) {
+        console.error('Could not open the shared vault', e)
+        const unknownKey = e instanceof ApiError && (e.status === 404 || e.status === 401)
+        setError(unknownKey ? 'Invalid or expired share key.' : errorMessage(e, 'Failed to resolve share key.'))
       }
+      setResolving(false)
     }
 
-    resolve()
-  }, [shareHash])
-
-  const db = useMemo(() => {
-    if (!vaultHash) return null
-    try {
-      return vaultClient(vaultHash)
-    } catch {
-      setError('Failed to connect to vault.')
-      return null
-    }
-  }, [vaultHash])
+    check()
+  }, [api])
 
   if (resolving) {
     return (
@@ -60,7 +47,7 @@ export default function SharedVaultPage() {
     )
   }
 
-  if (error || !vaultHash || !db) {
+  if (error || !api) {
     return (
       <div className="h-dvh flex items-center justify-center" style={{ backgroundColor: 'var(--surface-0)' }}>
         <div className="text-center space-y-4">
@@ -143,14 +130,13 @@ export default function SharedVaultPage() {
         className="flex-1 overflow-y-auto overflow-x-hidden w-full mx-auto px-4 py-6"
         style={{ maxWidth: '1400px', paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom))', overscrollBehavior: 'none' }}
       >
-        <ListsView db={db} vaultHash={vaultHash} readOnly />
+        <ListsView api={api} />
       </main>
 
       <ExportModal
         open={exportModalOpen}
         onClose={() => setExportModalOpen(false)}
-        db={db}
-        vaultHash={vaultHash}
+        api={api}
       />
 
       <ToastContainer />

@@ -41,16 +41,3 @@ export async function hashSeedPhrase(phrase: string): Promise<string> {
 
   return hashHex
 }
-
-/**
- * Derive a deterministic share hash from a vault hash.
- * Uses domain separation (":share" suffix) so the share hash
- * cannot be reversed to the vault hash.
- */
-export async function deriveShareHash(vaultHash: string): Promise<string> {
-  const encoder = new TextEncoder()
-  const data = encoder.encode(vaultHash + ':share')
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data)
-  const hashArray = Array.from(new Uint8Array(hashBuffer))
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
-}

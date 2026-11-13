@@ -1,19 +1,17 @@
 import { useEffect, useState } from 'react'
-import type { SupabaseClient } from '@supabase/supabase-js'
 import type { VaultList } from '../lib/types'
-import { exportVault } from '../lib/vaultExport'
-import { fetchListsByVault } from '../lib/queries'
+import { errorMessage, type VaultApi } from '../lib/api'
+import { downloadExport } from '../lib/vaultExport'
 import Modal from './Modal'
 import { toast } from './Toast'
 
 interface Props {
   open: boolean
   onClose: () => void
-  db: SupabaseClient
-  vaultHash: string
+  api: VaultApi
 }
 
-export default function ExportModal({ open, onClose, db, vaultHash }: Props) {
+export default function ExportModal({ open, onClose, api }: Props) {
   const [lists, setLists] = useState<VaultList[]>([])
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
@@ -24,22 +22,19 @@ export default function ExportModal({ open, onClose, db, vaultHash }: Props) {
     setLoading(true)
 
     const fetchLists = async () => {
-      const { data, error } = await fetchListsByVault(db, vaultHash)
-
-      if (error) {
-        toast(error.message)
-        setLoading(false)
-        return
+      try {
+        const fetched = await api.lists()
+        setLists(fetched)
+        setSelected(new Set(fetched.map(l => l.id)))
+      } catch (e) {
+        console.error('Could not load lists for export', e)
+        toast(errorMessage(e))
       }
-
-      const fetched = (data ?? []) as VaultList[]
-      setLists(fetched)
-      setSelected(new Set(fetched.map(l => l.id)))
       setLoading(false)
     }
 
     fetchLists()
-  }, [open, db, vaultHash])
+  }, [open, api])
 
   const handleToggle = (id: string) => {
     setSelected(prev => {
@@ -62,12 +57,14 @@ export default function ExportModal({ open, onClose, db, vaultHash }: Props) {
     if (selected.size === 0) return
     setExporting(true)
     try {
-      const listIds = Array.from(selected)
-      const result = await exportVault(db, vaultHash, listIds)
+      // No ids means "everything", which also keeps the address short for big vaults.
+      const listIds = selected.size === lists.length ? undefined : Array.from(selected)
+      const result = downloadExport(await api.exportVault(listIds))
       toast(`Exported ${result.listsExported} lists, ${result.assetsExported} assets`, 'success')
       onClose()
     } catch (e) {
-      toast(e instanceof Error ? e.message : 'Export failed')
+      console.error('Export failed', e)
+      toast(errorMessage(e, 'Export failed'))
     }
     setExporting(false)
   }

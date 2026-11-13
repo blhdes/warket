@@ -8,12 +8,16 @@ export interface Resource {
 /** A named watchlist owned by a vault. Assets are grouped inside lists. */
 export interface VaultList {
   id: string
-  vault_hash: string
   name: string
   tags: string[]
   position: number
   created_at: string
   updated_at: string
+}
+
+/** A list as the server sends it in the overview, with how many assets it holds. */
+export interface ListWithCount extends VaultList {
+  asset_count: number
 }
 
 /** A single tracked asset (stock, crypto, etc.) belonging to a VaultList. */
@@ -28,8 +32,8 @@ export interface Asset {
   description: string
   tags: string[]
   resources: Resource[]
-  /** URL to a custom logo/image for the asset */
-  image_url?: string
+  /** URL to a custom logo/image for the asset. `null` when there is none. */
+  image_url: string | null
   position: number
   created_at: string
 }

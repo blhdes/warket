@@ -47,14 +47,8 @@ export default defineConfig({
               expiration: { maxAgeSeconds: 60 * 60 * 24 * 7 },
             },
           },
-          {
-            urlPattern: ({ url }) => url.hostname.endsWith('.supabase.co'),
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'supabase-api',
-              expiration: { maxEntries: 100, maxAgeSeconds: 60 * 60 * 24 * 7 },
-            },
-          },
+          // No rule for the warket server on purpose: its answers depend on the
+          // Authorization header, so a cache keyed by URL would mix up vaults.
         ],
       },
     }),

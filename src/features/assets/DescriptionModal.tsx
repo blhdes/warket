@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Asset } from '../../lib/types'
+import { errorMessage, type VaultApi } from '../../lib/api'
 import { renderMarkdown } from '../../lib/markdown'
 import { toast } from '../../components/Toast'
 import MarkdownEditor from '../../components/MarkdownEditor'
@@ -10,7 +10,7 @@ interface Props {
   open: boolean
   onClose: () => void
   asset: Asset
-  db: SupabaseClient
+  api: VaultApi
   onUpdate: (updated: Asset) => void
   readOnly?: boolean
 }
@@ -18,7 +18,7 @@ interface Props {
 const CLOSE_MS = 250
 const EASE = 'cubic-bezier(0.4, 0, 0.2, 1)'
 
-export default function DescriptionModal({ open, onClose, asset, db, onUpdate, readOnly }: Props) {
+export default function DescriptionModal({ open, onClose, asset, api, onUpdate, readOnly }: Props) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(asset.description ?? '')
   const [saving, setSaving] = useState(false)
@@ -179,15 +179,18 @@ export default function DescriptionModal({ open, onClose, asset, db, onUpdate, r
 
   const handleSave = async () => {
     setSaving(true)
-    const { error } = await db
-      .from('assets')
-      .update({ description: draft })
-      .eq('id', asset.id)
-    setSaving(false)
+    let saved: Asset
+    try {
+      saved = await api.updateAsset(asset.id, { description: draft })
+    } catch (e) {
+      console.error(`Could not save the description of asset ${asset.id}`, e)
+      toast(errorMessage(e))
+      return
+    } finally {
+      setSaving(false)
+    }
 
-    if (error) { toast(error.message); return }
-
-    onUpdate({ ...asset, description: draft })
+    onUpdate(saved)
     toast('Description saved', 'success')
     setEditing(false)
   }

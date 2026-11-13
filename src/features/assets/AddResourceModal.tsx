@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Resource, Asset } from '../../lib/types'
+import { errorMessage, type VaultApi } from '../../lib/api'
 import { faviconUrl, extractHostname } from '../../lib/favicon'
 import { fetchPageTitle } from '../../lib/fetchTitle'
 import Modal from '../../components/Modal'
@@ -10,11 +10,11 @@ interface Props {
   open: boolean
   onClose: () => void
   asset: Asset
-  db: SupabaseClient
+  api: VaultApi
   onUpdate: (updated: Asset) => void
 }
 
-export default function AddResourceModal({ open, onClose, asset, db, onUpdate }: Props) {
+export default function AddResourceModal({ open, onClose, asset, api, onUpdate }: Props) {
   const [url, setUrl] = useState('')
   const [title, setTitle] = useState('')
   const [fetchingTitle, setFetchingTitle] = useState(false)
@@ -67,15 +67,18 @@ export default function AddResourceModal({ open, onClose, asset, db, onUpdate }:
     const updated = [...(asset.resources ?? []), newResource]
 
     setSaving(true)
-    const { error } = await db
-      .from('assets')
-      .update({ resources: updated })
-      .eq('id', asset.id)
-    setSaving(false)
+    let saved: Asset
+    try {
+      saved = await api.updateAsset(asset.id, { resources: updated })
+    } catch (e) {
+      console.error(`Could not add a resource to asset ${asset.id}`, e)
+      toast(errorMessage(e))
+      return
+    } finally {
+      setSaving(false)
+    }
 
-    if (error) { toast(error.message); return }
-
-    onUpdate({ ...asset, resources: updated })
+    onUpdate(saved)
     toast('Resource added', 'success')
     reset()
     onClose()
