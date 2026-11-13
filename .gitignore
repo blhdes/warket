@@ -35,3 +35,10 @@ dist-ssr
 .dev.vars
 server/worker-configuration.d.ts
 server/.migration
+
+# App Store release: personal contact for App Review and build archives stay local.
+# Screenshots are rebuilt by the capture script and Koubou.
+store/contact.env
+store/build/
+store/screenshots/raw/
+store/screenshots/final/
