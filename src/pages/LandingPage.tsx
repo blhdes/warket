@@ -154,7 +154,7 @@ export default function LandingPage() {
             className="inline-flex items-center gap-3 text-5xl"
             style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}
           >
-            <Logo size={36} style={{ color: 'var(--accent)', opacity: 0.4 }} />
+            <Logo size={36} />
             <span><span style={{ color: 'var(--accent)' }}>w</span>arket</span>
           </div>
           <p

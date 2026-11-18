@@ -170,7 +170,7 @@ Defined in `server/src/db/schema.ts` (D1, SQLite). Data is stored as plain text,
 
 ### Logo
 
-Ascending W: an asymmetric double-bottom chart pattern where the right arm rises higher than the left, communicating bullish breakout momentum. Monochrome, uses `currentColor` for theme compatibility.
+Dial: a safe's dial with twelve notches, one in teal. Your 12 words, one key. Every logo file is written by `design/build-mark.py` from one workshop line. On the web the dial uses `currentColor` and the key notch keeps its teal.
 
 ### Favicon
 
@@ -208,7 +208,7 @@ Transparent background with a subtle teal-tinted rounded rectangle (`fill="#2a9d
 ```
 warket/
 ├── public/
-│   ├── favicon.svg              # W logo (transparent bg + teal tint)
+│   ├── favicon.svg              # Dial logo on a teal tile (from design/build-mark.py)
 │   ├── favicon.ico
 │   ├── favicon-16x16.png
 │   ├── favicon-32x32.png
@@ -221,7 +221,7 @@ warket/
 │   │   ├── InstallPrompt.tsx    # PWA install prompt (Chrome native + iOS hint)
 │   │   ├── OfflineBanner.tsx    # Fixed top banner shown when network is offline
 │   │   ├── MarketPulse.tsx      # Animated market-movement canvas (landing page bg)
-│   │   ├── Logo.tsx             # W ascending breakout as React component
+│   │   ├── Logo.tsx             # Dial logo as React component (paths in logoMark.ts)
 │   │   ├── MarkdownEditor.tsx   # Custom markdown toolbar + textarea
 │   │   ├── Modal.tsx            # Shared modal (portal + swipe)
 │   │   ├── Skeleton.tsx         # Loading skeletons
@@ -459,7 +459,7 @@ MIT License. See `LICENSE` file for details.
 - **Design & Development**: Built with care for privacy and premium UX
 - **Fonts**: Instrument Serif (Google Fonts), General Sans (Fontshare), JetBrains Mono
 - **Icons**: Heroicons
-- **Logo**: Custom ascending W: asymmetric double-bottom chart pattern
+- **Logo**: Dial with twelve notches, one in teal (`design/build-mark.py`)
 
 ---
 

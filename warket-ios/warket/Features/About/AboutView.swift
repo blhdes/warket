@@ -33,6 +33,8 @@ struct AboutView: View {
 
     private var header: some View {
         VStack(spacing: 6) {
+            WarketMark(size: 56)
+                .padding(.bottom, 2)
             Text("warket")
                 .font(.serif(48, relativeTo: .largeTitle))
                 .foregroundStyle(Theme.textPrimary)

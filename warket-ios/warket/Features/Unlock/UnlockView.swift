@@ -192,6 +192,8 @@ struct UnlockView: View {
 
     private var header: some View {
         VStack(spacing: 10) {
+            WarketMark(size: 64)
+                .padding(.bottom, 2)
             Text("warket")
                 .font(.serif(64, relativeTo: .largeTitle))
                 .foregroundStyle(Theme.textPrimary)

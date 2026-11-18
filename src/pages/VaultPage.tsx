@@ -121,7 +121,7 @@ export default function VaultPage() {
               padding: 0,
             }}
           >
-            <Logo size={18} style={{ color: 'var(--accent)', opacity: 0.45 }} />
+            <Logo size={18} />
             <span><span style={{ color: 'var(--accent)' }}>w</span>arket</span>
           </button>
 
