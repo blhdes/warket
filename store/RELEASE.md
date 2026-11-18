@@ -6,6 +6,12 @@
 > This is audit plan Session 9. The plan (`.claude/plans/audit-plan.md`, local only) adds Session 8b, a new
 > logo and Icon Composer icon, between phase 3 and phase 4 here.
 
+## Next session (saved 2026-11-18)
+
+1. Ask the owner which app bugs they found and fix those first (new branch from `main`, owner tests on the iPhone).
+2. Owner: press Publicar on the App Privacy page, and run the iPhone tests (plan S6, S8, section 7, S8b).
+3. Then: review notes (`store/review-notes.txt`, demo share key in `store/demo-vault.env`), screenshots, build, submit.
+
 ## Quick reference
 
 | | |
@@ -65,16 +71,16 @@
 ## 3. Product page
 
 - ✅ Copy written in `store/metadata/` (en-US), validated and approved (2026-11-13)
-- ⏳ Privacy policy and support pages written and checked in a local build (2026-11-13). 👉 Live after your yes to push `main` (it deploys the website)
+- ✅ Privacy policy and support pages live (2026-11-18): https://asset-cafe.vercel.app/privacy and /support answer 200 with their own titles
 - ✅ Metadata pushed with `asc metadata apply` (your OK, 2026-11-13): subtitle, description, keywords, promotional text, support and privacy URLs. A dry run afterwards shows 0 changes. To change: edit `store/metadata/`, then the same command
 - ✅ Category Productivity + Finance, price Free (your OK, 2026-11-13)
 - ✅ Availability: every country except China mainland (ICP filing), copyright `2026 Alejandro Gómez Urrea`, content rights "does not use third-party content", age rating all none (4+). Sent with `asc`, your OK (2026-11-13)
 - ⏳ App Privacy answered in Chrome (your OK): Other User Content, not linked to you, App Functionality, no tracking. Saved, NOT published. 👉 You press Publicar on the App Privacy page: its confirmation is your statement that the answers are accurate
-- ⬜ App Review details (contact from `store/contact.env`, notes in `store/review-notes.txt`, demo vault)
+- ⏳ App Review details (contact from `store/contact.env`, notes in `store/review-notes.txt`, demo vault). Demo vault created 2026-11-18 on the live server from `warket-seed-data.json` (11 lists, 62 assets), with your OK; its 12 words and share key are in `store/demo-vault.env` (gitignored). Viewer checked: read works, writes answer 403
 
 ## 4. Screenshots
 
-Waits for plan Session 8b (new icon). Logo workshop (8b.1): https://claude.ai/artifact/TFD8q1ZfsXZp5Epb1wBUcK
+Session 8b done 2026-11-18 (Dial, commit `f205709`). Logo workshop (8b.1): https://claude.ai/artifact/TFD8q1ZfsXZp5Epb1wBUcK
 
 - ⬜ Demo mode and demo content (rights checked)
 - ⬜ Capture UI test runs on the iPhone
@@ -109,3 +115,4 @@ Waits for plan Session 8b (new icon). Logo workshop (8b.1): https://claude.ai/ar
 - 2026-11-13: You signed in. No agreement banners. App record created (Apple ID `6834424963`). `asc validate`: 35 blocking items, the usual list for a new record (copy, review details, category, content rights, price, availability, screenshots, build).
 - 2026-11-13: Sent with your OK: store version renamed 1.0 → 1.0.0 (matches `MARKETING_VERSION`), English copy (`asc metadata apply`, dry run first, then 0 changes left), categories Productivity + Finance, price Free. `asc validate`: 35 → 30 blocking (24 age-rating questions, review details, content rights, availability, copyright, screenshots, build).
 - 2026-11-13: Sent with your OK: availability without China, copyright, content rights, age rating 4+. App Privacy answered and saved in Chrome, not published (the publish confirmation is yours). `asc validate`: 3 blocking left (review details, screenshots, build). Logo workshop published for plan Session 8b. Commits pushed on `fix/audit-session-9`, `main` untouched.
+- 2026-11-18: New logo (Session 8b, Dial) committed `f205709`. With your OK: `fix/audit-session-9` fast-forwarded into `main` and pushed (deploys the website with /privacy, /support and the new favicons). Demo vault created for App Review, keys in `store/demo-vault.env`.
