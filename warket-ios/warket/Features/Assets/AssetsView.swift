@@ -58,15 +58,19 @@ struct AssetsView: View {
     private var content: some View {
         switch phase {
         case .loading:
-            ProgressView().tint(Theme.accent)
+            ProgressView()
 
         case .failed(let message):
-            StateMessage(
-                icon: "exclamationmark.triangle", title: "Couldn't load assets", detail: message,
-                tint: Theme.error, actionTitle: "Try again"
-            ) {
-                phase = .loading
-                Task { await load() }
+            ContentUnavailableView {
+                Label("Couldn't Load Assets", systemImage: "exclamationmark.triangle")
+            } description: {
+                Text(message)
+            } actions: {
+                Button("Try Again") {
+                    phase = .loading
+                    Task { await load() }
+                }
+                .buttonStyle(.bordered)
             }
 
         case .loaded:
@@ -89,9 +93,6 @@ struct AssetsView: View {
                 NavigationLink(value: asset) {
                     AssetRow(asset: asset)
                 }
-                .listRowBackground(glassRowBackground)
-                .listRowSeparator(.hidden)
-                .listRowInsets(EdgeInsets(top: 12, leading: 22, bottom: 12, trailing: 22))
                 .swipeActions(edge: .trailing) {
                     if !readOnly {
                         Button(role: .destructive) { pendingDelete = asset } label: {
@@ -100,23 +101,13 @@ struct AssetsView: View {
                         Button { editing = asset } label: {
                             Label("Edit", systemImage: "pencil")
                         }
-                        .tint(Theme.accent)
+                        .tint(.accentColor)
                     }
                 }
             }
             .onMove(perform: (readOnly || isFiltered) ? nil : move)
         }
-        .listStyle(.plain)
-        .scrollContentBackground(.hidden)
-    }
-
-    /// Inset glass slab behind each asset row, matching the lists screen so the
-    /// drill-down keeps the same floating-card vocabulary over the mesh.
-    private var glassRowBackground: some View {
-        Color.clear
-            .glassSurface(in: RoundedRectangle(cornerRadius: 14))
-            .padding(.horizontal, 16)
-            .padding(.vertical, 3)
+        .listStyle(.insetGrouped)
     }
 
     private func tagFilterBar(_ tags: [String]) -> some View {
@@ -140,9 +131,11 @@ struct AssetsView: View {
     @ViewBuilder
     private var emptyState: some View {
         if assets.isEmpty {
-            StateMessage(icon: "tray", title: "No assets yet", detail: "Tap + to add your first asset.", tint: Theme.textTertiary)
+            ContentUnavailableView("No Assets Yet", systemImage: "tray",
+                                   description: Text("Tap + to add your first asset."))
         } else {
-            StateMessage(icon: "magnifyingglass", title: "No matches", detail: "Try a different search or tag.", tint: Theme.textTertiary)
+            ContentUnavailableView("No Matches", systemImage: "magnifyingglass",
+                                   description: Text("Try a different search or tag."))
         }
     }
 
@@ -151,7 +144,7 @@ struct AssetsView: View {
         if !readOnly {
             ToolbarItem(placement: .topBarLeading) { EditButton() }
             ToolbarItem(placement: .topBarTrailing) {
-                Button { showingCreate = true } label: { Image(systemName: "plus") }
+                Button("New Asset", systemImage: "plus") { showingCreate = true }
             }
         }
     }

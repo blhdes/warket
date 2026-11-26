@@ -5,7 +5,6 @@ import SwiftUI
 /// handed to the Session.
 struct UnlockView: View {
     @Environment(Session.self) private var session
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var phrase = ""
     @State private var remember = true
@@ -15,7 +14,6 @@ struct UnlockView: View {
     @State private var phraseSaved = false
     @State private var showingAbout = false
 
-    @State private var appeared = false
     @State private var generateTick = 0
 
     @State private var showingShareEntry = false
@@ -41,14 +39,6 @@ struct UnlockView: View {
                     .padding(.horizontal, 24)
                 }
                 .scrollDismissesKeyboard(.interactively)
-            }
-        }
-        .onAppear {
-            guard !appeared else { return }
-            if reduceMotion {
-                appeared = true
-            } else {
-                withAnimation(.smooth(duration: 0.6).delay(0.05)) { appeared = true }
             }
         }
         .sheet(isPresented: $showingShareEntry) { shareEntrySheet }
@@ -78,8 +68,6 @@ struct UnlockView: View {
             accessButton
             sharedVaultButton
         }
-        .opacity(appeared ? 1 : 0)
-        .offset(y: appeared ? 0 : 14)
         .animation(.snappy(duration: 0.3), value: needsBackup)
     }
 
@@ -162,28 +150,17 @@ struct UnlockView: View {
         Button { Task { await resolveShare() } } label: {
             Group {
                 if resolvingShare {
-                    ProgressView().tint(.white)
+                    ProgressView()
                 } else {
-                    Text("Open vault").font(.headline)
+                    Text("Open Vault")
                 }
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 16)
-            .foregroundStyle(canOpenShare ? .white : Theme.textTertiary)
-            .background {
-                Capsule().fill(
-                    canOpenShare
-                        ? AnyShapeStyle(LinearGradient(
-                            colors: [Theme.accent, Theme.accentHover],
-                            startPoint: .top, endPoint: .bottom))
-                        : AnyShapeStyle(Theme.surface3)
-                )
-            }
-            .shadow(color: Theme.accent.opacity(canOpenShare ? 0.30 : 0), radius: 18, y: 8)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.borderedProminent)
+        .buttonBorderShape(.capsule)
+        .controlSize(.large)
         .disabled(!canOpenShare || resolvingShare)
-        .animation(.snappy(duration: 0.25), value: canOpenShare)
     }
 
     private var canOpenShare: Bool {
@@ -242,25 +219,13 @@ struct UnlockView: View {
 
     private var accessButton: some View {
         Button(action: access) {
-            Text("Access vault")
-                .font(.headline)
+            Text("Access Vault")
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 16)
-                .foregroundStyle(canAccess ? .white : Theme.textTertiary)
-                .background {
-                    Capsule().fill(
-                        canAccess
-                            ? AnyShapeStyle(LinearGradient(
-                                colors: [Theme.accent, Theme.accentHover],
-                                startPoint: .top, endPoint: .bottom))
-                            : AnyShapeStyle(Theme.surface3)
-                    )
-                }
-                .shadow(color: Theme.accent.opacity(canAccess ? 0.30 : 0), radius: 18, y: 8)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.borderedProminent)
+        .buttonBorderShape(.capsule)
+        .controlSize(.large)
         .disabled(!canAccess)
-        .animation(.snappy(duration: 0.25), value: canAccess)
     }
 
     private var canAccess: Bool {

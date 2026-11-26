@@ -41,8 +41,6 @@ struct ListEditorSheet: View {
                     TagEditor(tags: $tags)
                 }
             }
-            .scrollContentBackground(.hidden)
-            .background(Theme.surface0)
             .navigationTitle(isCreate ? "New List" : "Edit List")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

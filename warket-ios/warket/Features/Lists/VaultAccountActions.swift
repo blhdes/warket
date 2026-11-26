@@ -114,17 +114,17 @@ private struct DeleteVaultSheet: View {
         Button { confirming = true } label: {
             Group {
                 if deleting {
-                    ProgressView().tint(.white)
+                    ProgressView()
                 } else {
-                    Text("Delete vault").font(.headline)
+                    Text("Delete Vault")
                 }
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 16)
-            .foregroundStyle(.white)
-            .background(Capsule().fill(Theme.error))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.borderedProminent)
+        .buttonBorderShape(.capsule)
+        .controlSize(.large)
+        .tint(.red)
         .disabled(deleting)
     }
 

@@ -82,8 +82,6 @@ struct AssetEditorSheet: View {
                 imageSection
                 resourcesSection
             }
-            .scrollContentBackground(.hidden)
-            .background(Theme.surface0)
             .navigationTitle(isCreate ? "New Asset" : "Edit Asset")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
