@@ -1,7 +1,5 @@
 import os
 import SwiftUI
-import UIKit
-import UniformTypeIdentifiers
 
 /// User-selectable layout for the lists screen, persisted across launches.
 enum ListLayout: String {
@@ -31,9 +29,7 @@ struct ListsView: View {
     @State private var pendingDelete: ListWithAssetCount?
     @State private var reorderTask: Task<Void, Never>?
 
-    @State private var exportDoc: JSONDocument?
-    @State private var showExporter = false
-    @State private var showImporter = false
+    @State private var transferRequest: TransferRequest?
     @State private var accountPrompt: AccountPrompt?
 
     private enum Phase: Equatable { case loading, loaded, failed(String) }
@@ -49,11 +45,11 @@ struct ListsView: View {
     }
 
     var body: some View {
-        ZStack {
-            MarketPulseBackground()
-            content
-        }
+        content
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(.systemGroupedBackground))
         .navigationTitle("Lists")
+        .readOnlySubtitle(readOnly)
         .searchable(text: $search, prompt: "Search lists & assets")
         .toolbar { toolbarContent }
         .task { await load() }
@@ -84,25 +80,7 @@ struct ListsView: View {
             }
             Button("Cancel", role: .cancel) {}
         }
-        .fileExporter(
-            isPresented: $showExporter,
-            document: exportDoc,
-            contentType: .json,
-            defaultFilename: exportFilename
-        ) { result in
-            if case .failure(let error) = result {
-                toast.show(error.userMessage, .error)
-            } else {
-                Haptics.success()
-                toast.show("Vault exported", .success)
-            }
-        }
-        .fileImporter(
-            isPresented: $showImporter,
-            allowedContentTypes: [.json]
-        ) { result in
-            Task { await handleImport(result) }
-        }
+        .vaultTransferActions($transferRequest, repo: repo) { await load() }
         .vaultAccountActions($accountPrompt, repo: repo)
     }
 
@@ -128,12 +106,7 @@ struct ListsView: View {
             }
 
         case .loaded:
-            let tags = allTags
-            let filtered = filteredLists
-            VStack(spacing: 0) {
-                if !tags.isEmpty { tagFilterBar(tags) }
-                listOrGrid(filtered)
-            }
+            listOrGrid(filteredLists)
         }
     }
 
@@ -144,8 +117,13 @@ struct ListsView: View {
                 ContentUnavailableView("No Lists Yet", systemImage: "tray",
                                        description: Text("Tap + to create your first list."))
             } else {
-                ContentUnavailableView("No Matches", systemImage: "magnifyingglass",
-                                       description: Text("Try a different search or tag."))
+                ContentUnavailableView {
+                    Label("No Matches", systemImage: "magnifyingglass")
+                } description: {
+                    Text("Try a different search or tag.")
+                } actions: {
+                    Button("Show All") { search = ""; activeTag = nil }
+                }
             }
         } else if layout == .list {
             listLayout(filtered)
@@ -198,81 +176,67 @@ struct ListsView: View {
             }
             .padding(16)
         }
-    }
-
-    private func tagFilterBar(_ tags: [String]) -> some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                ForEach(tags, id: \.self) { tag in
-                    Button {
-                        activeTag = (activeTag == tag) ? nil : tag
-                        Haptics.selection()
-                    } label: {
-                        TagPill(text: tag, selected: activeTag == tag)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
-        }
+        .background(Color(.systemGroupedBackground))
     }
 
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
-        if readOnly {
-            ToolbarItem(placement: .topBarLeading) {
-                Text("Read-only")
-                    .font(.caption2.weight(.semibold))
-                    .textCase(.uppercase)
-                    .tracking(0.5)
-                    .foregroundStyle(.secondary)
-            }
-        } else if layout == .list {
-            ToolbarItem(placement: .topBarLeading) { EditButton() }
+        if !readOnly && layout == .list {
+            ToolbarItem(placement: .topBarTrailing) { EditButton() }
+            ToolbarSpacer(.fixed, placement: .topBarTrailing)
         }
-        if !readOnly {
+        if !allTags.isEmpty {
             ToolbarItem(placement: .topBarTrailing) {
+                TagFilterMenu(tags: allTags, selection: $activeTag)
+            }
+        }
+        ToolbarItem(placement: .topBarTrailing) { moreMenu }
+
+        DefaultToolbarItem(kind: .search, placement: .bottomBar)
+        if !readOnly {
+            ToolbarSpacer(.fixed, placement: .bottomBar)
+            ToolbarItem(placement: .bottomBar) {
                 Button("New List", systemImage: "plus") { showingCreate = true }
             }
         }
-        ToolbarItem(placement: .topBarTrailing) {
-            Menu {
-                Picker("Layout", selection: $layout) {
-                    Label("List", systemImage: "list.bullet").tag(ListLayout.list)
-                    Label("Grid", systemImage: "square.grid.2x2").tag(ListLayout.grid)
-                }
-                Divider()
-                Button { Task { await prepareExport() } } label: {
-                    Label("Export vault", systemImage: "square.and.arrow.up")
-                }
-                if !readOnly {
-                    Button { showImporter = true } label: {
-                        Label("Import vault", systemImage: "square.and.arrow.down")
-                    }
-                    Button { Task { await shareVault() } } label: {
-                        Label("Share (read-only)", systemImage: "person.crop.circle.badge.plus")
-                    }
-                }
-                Divider()
-                Button { accountPrompt = .about } label: {
-                    Label("About", systemImage: "info.circle")
-                }
-                if readOnly {
-                    Button(role: .destructive) { session.signOut() } label: {
-                        Label("Exit shared vault", systemImage: "xmark.circle")
-                    }
-                } else {
-                    Button(role: .destructive) { accountPrompt = .lock } label: {
-                        Label("Lock vault", systemImage: "lock.fill")
-                    }
-                    Button(role: .destructive) { accountPrompt = .deleteVault } label: {
-                        Label("Delete vault\u{2026}", systemImage: "trash")
-                    }
-                }
-            } label: {
-                Label("More", systemImage: "ellipsis")
+    }
+
+    private var moreMenu: some View {
+        Menu {
+            Picker("Layout", selection: $layout) {
+                Label("List", systemImage: "list.bullet").tag(ListLayout.list)
+                Label("Grid", systemImage: "square.grid.2x2").tag(ListLayout.grid)
             }
+            Divider()
+            Button { transferRequest = .export } label: {
+                Label("Export Vault", systemImage: "square.and.arrow.up")
+            }
+            if !readOnly {
+                Button { transferRequest = .importFile } label: {
+                    Label("Import Vault", systemImage: "square.and.arrow.down")
+                }
+                Button { transferRequest = .share } label: {
+                    Label("Share Read-Only Key", systemImage: "person.crop.circle.badge.plus")
+                }
+            }
+            Divider()
+            Button { accountPrompt = .about } label: {
+                Label("About", systemImage: "info.circle")
+            }
+            if readOnly {
+                Button(role: .destructive) { session.signOut() } label: {
+                    Label("Exit Shared Vault", systemImage: "xmark.circle")
+                }
+            } else {
+                Button(role: .destructive) { accountPrompt = .lock } label: {
+                    Label("Lock Vault", systemImage: "lock.fill")
+                }
+                Button(role: .destructive) { accountPrompt = .deleteVault } label: {
+                    Label("Delete Vault\u{2026}", systemImage: "trash")
+                }
+            }
+        } label: {
+            Label("More", systemImage: "ellipsis")
         }
     }
 
@@ -386,76 +350,6 @@ struct ListsView: View {
                 toast.show(error.userMessage, .error)
                 await load() // nothing was saved, so show the server's order again
             }
-        }
-    }
-
-    // MARK: - Export / Import
-
-    private var exportFilename: String {
-        let formatter = DateFormatter()
-        // Fixed locale and calendar, so a phone set to e.g. the Buddhist calendar still gets 2026, not 2569.
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.calendar = Calendar(identifier: .gregorian)
-        formatter.dateFormat = "yyyy-MM-dd"
-        return "warket-export-\(formatter.string(from: Date()))"
-    }
-
-    private func prepareExport() async {
-        do {
-            let export = try await repo.exportVault()
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = [.prettyPrinted, .withoutEscapingSlashes]
-            exportDoc = JSONDocument(data: try encoder.encode(export))
-            showExporter = true
-        } catch {
-            Haptics.error()
-            toast.show(error.userMessage, .error)
-        }
-    }
-
-    private func handleImport(_ result: Result<URL, Error>) async {
-        let url: URL
-        switch result {
-        case .success(let picked): url = picked
-        case .failure(let error):
-            toast.show(error.userMessage, .error)
-            return
-        }
-
-        let scoped = url.startAccessingSecurityScopedResource()
-        defer { if scoped { url.stopAccessingSecurityScopedResource() } }
-
-        do {
-            let data = try Data(contentsOf: url)
-            let decoded = try JSONDecoder().decode(VaultExport.self, from: data)
-            if let message = VaultExport.validate(decoded) {
-                toast.show(message, .error)
-                return
-            }
-            let summary = try await repo.importVault(decoded)
-            Haptics.success()
-            toast.show("Imported \(summary.lists) lists, \(summary.assets) assets", .success)
-            await load()
-        } catch is DecodingError {
-            Haptics.error()
-            toast.show("Invalid or unrecognized file", .error)
-        } catch {
-            Haptics.error()
-            toast.show(error.userMessage, .error)
-        }
-    }
-
-    /// Create/refresh a read-only share key and copy it to the clipboard, so it
-    /// can be pasted into another device's "Open a shared vault" field.
-    private func shareVault() async {
-        do {
-            let key = try await repo.upsertShare()
-            UIPasteboard.general.string = key
-            Haptics.success()
-            toast.show("Share key copied to clipboard", .success)
-        } catch {
-            Haptics.error()
-            toast.show(error.userMessage, .error)
         }
     }
 }

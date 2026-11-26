@@ -22,11 +22,11 @@ struct AssetsView: View {
     private enum Phase: Equatable { case loading, loaded, failed(String) }
 
     var body: some View {
-        ZStack {
-            MarketPulseBackground()
-            content
-        }
+        content
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(.systemGroupedBackground))
         .navigationTitle(list.name)
+        .readOnlySubtitle(readOnly)
         .navigationBarTitleDisplayMode(.inline)
         .searchable(text: $search, prompt: "Search assets")
         .toolbar { toolbarContent }
@@ -74,15 +74,11 @@ struct AssetsView: View {
             }
 
         case .loaded:
-            let tags = allTags
             let filtered = filteredAssets
-            VStack(spacing: 0) {
-                if !tags.isEmpty { tagFilterBar(tags) }
-                if filtered.isEmpty {
-                    emptyState
-                } else {
-                    assetList(filtered)
-                }
+            if filtered.isEmpty {
+                emptyState
+            } else {
+                assetList(filtered)
             }
         }
     }
@@ -110,40 +106,37 @@ struct AssetsView: View {
         .listStyle(.insetGrouped)
     }
 
-    private func tagFilterBar(_ tags: [String]) -> some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                ForEach(tags, id: \.self) { tag in
-                    Button {
-                        activeTag = (activeTag == tag) ? nil : tag
-                        Haptics.selection()
-                    } label: {
-                        TagPill(text: tag, selected: activeTag == tag)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
-        }
-    }
-
     @ViewBuilder
     private var emptyState: some View {
         if assets.isEmpty {
             ContentUnavailableView("No Assets Yet", systemImage: "tray",
                                    description: Text("Tap + to add your first asset."))
         } else {
-            ContentUnavailableView("No Matches", systemImage: "magnifyingglass",
-                                   description: Text("Try a different search or tag."))
+            ContentUnavailableView {
+                Label("No Matches", systemImage: "magnifyingglass")
+            } description: {
+                Text("Try a different search or tag.")
+            } actions: {
+                Button("Show All") { search = ""; activeTag = nil }
+            }
         }
     }
 
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
         if !readOnly {
-            ToolbarItem(placement: .topBarLeading) { EditButton() }
+            ToolbarItem(placement: .topBarTrailing) { EditButton() }
+        }
+        if !allTags.isEmpty {
+            ToolbarSpacer(.fixed, placement: .topBarTrailing)
             ToolbarItem(placement: .topBarTrailing) {
+                TagFilterMenu(tags: allTags, selection: $activeTag)
+            }
+        }
+        DefaultToolbarItem(kind: .search, placement: .bottomBar)
+        if !readOnly {
+            ToolbarSpacer(.fixed, placement: .bottomBar)
+            ToolbarItem(placement: .bottomBar) {
                 Button("New Asset", systemImage: "plus") { showingCreate = true }
             }
         }

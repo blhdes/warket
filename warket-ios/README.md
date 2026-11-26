@@ -24,7 +24,7 @@ filtering, in the system fonts (the brand serif only in the wordmark).
   the hash across launches, in the Keychain (this device only, not in backups).
   A share key pasted here opens that vault read-only.
 - **Lists**: native List *or* 2-column grid (persisted toggle), create, edit,
-  delete, search (by list name *or* a contained asset's name/ticker), tag-chip
+  delete, search (by list name *or* a contained asset's name/ticker), tag-menu
   filtering, drag-reorder. If loading fails, a "Try Again" button reloads.
 - **Assets**: add, edit, delete, search, tag filtering, drag-reorder.
 - **Asset detail**: image, summary, **markdown notes** (custom block renderer:
@@ -92,10 +92,11 @@ warket/
                          VaultTransfer (export/import), TitleFetcher,
                          Session, Haptics, URL+WebLink
   Components/            MarkdownText, MarkdownParser, TagPill, TagEditor,
-                         FlowLayout, Toast
+                         TagFilterMenu, View+ReadOnly, FlowLayout, Toast
   Features/
-    Unlock/              UnlockView
-    Lists/               ListsView, ListCard, ListRow, ListEditorSheet
+    Unlock/              UnlockView, ShareEntrySheet, PhraseBackupSection
+    Lists/               ListsView, ListCard, ListRow, ListEditorSheet,
+                         VaultAccountActions, VaultTransferActions
     Assets/              AssetsView, AssetRow, AssetDetailView,
                          AssetEditorSheet, AddResourceSheet
 warketTests/             HashParityTests, FontEmbeddingTests
