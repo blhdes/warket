@@ -2,7 +2,7 @@ import SwiftUI
 
 /// The editable fields of an asset, passed from the editor back to the caller,
 /// which performs the actual server create/update.
-struct AssetDraft {
+struct AssetDraft: Equatable {
     var name: String
     var ticker: String
     var summary: String
@@ -25,6 +25,8 @@ struct AssetEditorSheet: View {
     let onSave: (AssetDraft) async throws -> Void
 
     @Environment(\.dismiss) private var dismiss
+    /// What the fields held when the sheet opened, to tell whether anything changed.
+    private let original: AssetDraft
 
     @State private var name: String
     @State private var ticker: String
@@ -54,22 +56,20 @@ struct AssetEditorSheet: View {
         self.onSave = onSave
         switch mode {
         case .create:
-            _name = State(initialValue: "")
-            _ticker = State(initialValue: "")
-            _summary = State(initialValue: "")
-            _description = State(initialValue: "")
-            _imageUrl = State(initialValue: "")
-            _tags = State(initialValue: [])
-            _resources = State(initialValue: [])
+            original = AssetDraft(name: "", ticker: "", summary: "", description: "",
+                                  tags: [], resources: [], imageUrl: "")
         case .edit(let asset):
-            _name = State(initialValue: asset.name)
-            _ticker = State(initialValue: asset.ticker)
-            _summary = State(initialValue: asset.summary)
-            _description = State(initialValue: asset.description)
-            _imageUrl = State(initialValue: asset.imageUrl ?? "")
-            _tags = State(initialValue: asset.tags)
-            _resources = State(initialValue: asset.resources.map { EditableResource(resource: $0) })
+            original = AssetDraft(name: asset.name, ticker: asset.ticker, summary: asset.summary,
+                                  description: asset.description, tags: asset.tags,
+                                  resources: asset.resources, imageUrl: asset.imageUrl ?? "")
         }
+        _name = State(initialValue: original.name)
+        _ticker = State(initialValue: original.ticker)
+        _summary = State(initialValue: original.summary)
+        _description = State(initialValue: original.description)
+        _imageUrl = State(initialValue: original.imageUrl)
+        _tags = State(initialValue: original.tags)
+        _resources = State(initialValue: original.resources.map { EditableResource(resource: $0) })
     }
 
     var body: some View {
@@ -99,6 +99,7 @@ struct AssetEditorSheet: View {
                 AddResourceSheet { resources.append(EditableResource(resource: $0)) }
             }
         }
+        .confirmDiscard(when: hasChanges)
     }
 
     // MARK: Sections
@@ -124,6 +125,9 @@ struct AssetEditorSheet: View {
             Text("Summary")
         } footer: {
             Text("\(summary.unicodeScalars.count)/\(Asset.summaryLimit)")
+                .monospacedDigit()
+                .contentTransition(.numericText(value: Double(summary.unicodeScalars.count)))
+                .animation(.snappy, value: summary.unicodeScalars.count)
         }
     }
 
@@ -189,7 +193,7 @@ struct AssetEditorSheet: View {
             .onMove { resources.move(fromOffsets: $0, toOffset: $1) }
 
             Button { showingAddResource = true } label: {
-                Label("Add resource", systemImage: "plus")
+                Label("Add Resource", systemImage: "plus")
             }
         } header: {
             HStack {
@@ -211,10 +215,9 @@ struct AssetEditorSheet: View {
         name.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    private func save() async {
-        isSaving = true
-        defer { isSaving = false }
-        let draft = AssetDraft(
+    /// The fields as they would be saved (trimmed), so stray spaces don't count as changes.
+    private var draft: AssetDraft {
+        AssetDraft(
             name: trimmedName,
             ticker: ticker.trimmingCharacters(in: .whitespaces),
             summary: summary.trimmingCharacters(in: .whitespacesAndNewlines),
@@ -223,6 +226,13 @@ struct AssetEditorSheet: View {
             resources: resources.map(\.resource),
             imageUrl: imageUrl.trimmingCharacters(in: .whitespaces)
         )
+    }
+
+    private var hasChanges: Bool { draft != original }
+
+    private func save() async {
+        isSaving = true
+        defer { isSaving = false }
         do {
             try await onSave(draft)
             dismiss()

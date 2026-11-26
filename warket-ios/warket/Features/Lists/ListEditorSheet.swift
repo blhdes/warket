@@ -13,6 +13,8 @@ struct ListEditorSheet: View {
     let onSave: (_ name: String, _ tags: [String]) async throws -> Void
 
     @Environment(\.dismiss) private var dismiss
+    private let originalName: String
+    private let originalTags: [String]
     @State private var name: String
     @State private var tags: [String]
     @State private var isSaving = false
@@ -23,12 +25,14 @@ struct ListEditorSheet: View {
         self.onSave = onSave
         switch mode {
         case .create:
-            _name = State(initialValue: "")
-            _tags = State(initialValue: [])
+            originalName = ""
+            originalTags = []
         case .edit(let list):
-            _name = State(initialValue: list.name)
-            _tags = State(initialValue: list.tags)
+            originalName = list.name
+            originalTags = list.tags
         }
+        _name = State(initialValue: originalName)
+        _tags = State(initialValue: originalTags)
     }
 
     var body: some View {
@@ -56,6 +60,7 @@ struct ListEditorSheet: View {
             }
             .screenAlert($saveError)
         }
+        .confirmDiscard(when: hasChanges)
     }
 
     private var isCreate: Bool {
@@ -65,6 +70,10 @@ struct ListEditorSheet: View {
 
     private var trimmedName: String {
         name.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var hasChanges: Bool {
+        trimmedName != originalName || tags != originalTags
     }
 
     private func save() async {
