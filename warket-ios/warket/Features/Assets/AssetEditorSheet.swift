@@ -135,10 +135,10 @@ struct AssetEditorSheet: View {
             if notesMode == .write {
                 TextField("Markdown supported…", text: $description, axis: .vertical)
                     .lineLimit(5...14)
-                    .font(.mono(15, relativeTo: .body))
+                    .fontDesign(.monospaced)
             } else if description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 Text("Nothing to preview")
-                    .foregroundStyle(Theme.textTertiary)
+                    .foregroundStyle(.secondary)
             } else {
                 MarkdownText(description)
             }
@@ -177,10 +177,9 @@ struct AssetEditorSheet: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(item.resource.title.isEmpty ? item.resource.url : item.resource.title)
                         .lineLimit(1)
-                        .foregroundStyle(Theme.textPrimary)
                     Text(item.resource.url)
                         .font(.caption)
-                        .foregroundStyle(Theme.textTertiary)
+                        .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }
             }

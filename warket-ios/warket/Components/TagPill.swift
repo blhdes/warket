@@ -9,11 +9,11 @@ struct TagPill: View {
     var body: some View {
         Text(text)
             .font(.caption.weight(.medium))
-            .foregroundStyle(selected ? .white : Theme.textSecondary)
+            .foregroundStyle(selected ? Color.white : Color.secondary)
             .padding(.horizontal, 12)
             .padding(.vertical, 5)
             .background {
-                if selected { Capsule().fill(Theme.accent) }
+                if selected { Capsule().fill(.tint) }
             }
             .glassSurface(in: Capsule())
     }

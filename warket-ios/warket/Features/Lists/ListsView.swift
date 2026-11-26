@@ -226,7 +226,7 @@ struct ListsView: View {
                     .font(.caption2.weight(.semibold))
                     .textCase(.uppercase)
                     .tracking(0.5)
-                    .foregroundStyle(Theme.textTertiary)
+                    .foregroundStyle(.secondary)
             }
         } else if layout == .list {
             ToolbarItem(placement: .topBarLeading) { EditButton() }

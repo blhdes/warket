@@ -12,7 +12,7 @@ phrase, SHA-256 hashed on device into a `vault_hash`. No accounts, no emails.
 
 **MVP complete (M0 to M5)** plus sharing, export/import and title auto-fetch.
 Core flow: unlock, lists, assets, full CRUD, drag-reorder, search and tag
-filtering, on the brand's embedded fonts.
+filtering, in the system fonts (the brand serif only in the wordmark).
 
 ## Features
 
@@ -82,16 +82,16 @@ warket/
   RootView.swift         auth gate (Unlock ⇄ Lists) + toast host
   PrivacyInfo.xcprivacy  privacy manifest required by the App Store
   Config/                Info.plist, Secrets.xcconfig (gitignored)
-  Theme/                 Theme (colors/radii), Fonts (+ embedded .ttf),
-                         GlassSurface (Liquid Glass helper + gating),
-                         MarketPulseBackground (animated mesh backdrop)
+  Theme/                 Fonts (wordmark serif + its .ttf),
+                         GlassSurface, MarketPulseBackground (provisional
+                         system fills, removed in later purism sessions)
   Models/                Resource, VaultList, Asset (Codable, tolerant of
                          missing or null columns)
   Core/                  APIClient (server calls, VaultAccess, APIError),
                          VaultRepository, SeedPhrase, Wordlist,
                          VaultTransfer (export/import), TitleFetcher,
                          Session, Haptics, URL+WebLink
-  Components/            MarkdownText, StateMessage, TagPill, TagEditor,
+  Components/            MarkdownText, MarkdownParser, TagPill, TagEditor,
                          FlowLayout, Toast
   Features/
     Unlock/              UnlockView

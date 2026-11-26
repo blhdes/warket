@@ -10,7 +10,7 @@ struct WarketMark: View {
             Image("WarketMarkDial")
                 .resizable()
                 .renderingMode(.template)
-                .foregroundStyle(Theme.textPrimary)
+                .foregroundStyle(.primary)
             Image("WarketMarkKey")
                 .resizable()
                 .renderingMode(.original)

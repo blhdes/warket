@@ -37,10 +37,10 @@ struct AboutView: View {
                 .padding(.bottom, 2)
             Text("warket")
                 .font(.serif(48, relativeTo: .largeTitle))
-                .foregroundStyle(Theme.textPrimary)
             Text(versionText)
-                .font(.mono(13, relativeTo: .footnote))
-                .foregroundStyle(Theme.textTertiary)
+                .font(.footnote)
+                .monospacedDigit()
+                .foregroundStyle(.secondary)
         }
         .padding(.top, 8)
     }
@@ -49,7 +49,7 @@ struct AboutView: View {
         VStack(alignment: .leading, spacing: 10) {
             Text("How your vault works")
                 .font(.headline)
-                .foregroundStyle(Theme.textPrimary)
+                .foregroundStyle(.primary)
             Text("""
             Your 12 words are the key to your vault. They never leave this iPhone: the app turns \
             them into a long code and uses only that code to reach your vault. Your lists and \
@@ -62,7 +62,7 @@ struct AboutView: View {
             """)
         }
         .font(.subheadline)
-        .foregroundStyle(Theme.textSecondary)
+        .foregroundStyle(.secondary)
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(18)
         .glassSurface(in: RoundedRectangle(cornerRadius: 16))
@@ -79,10 +79,10 @@ struct AboutView: View {
         Link(destination: url) {
             HStack {
                 Label(title, systemImage: icon)
-                    .foregroundStyle(Theme.textPrimary)
+                    .foregroundStyle(.primary)
                 Spacer()
                 Image(systemName: "arrow.up.right")
-                    .foregroundStyle(Theme.textTertiary)
+                    .foregroundStyle(.tertiary)
             }
             .font(.subheadline.weight(.medium))
             .padding(.horizontal, 18)

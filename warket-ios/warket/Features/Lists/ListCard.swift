@@ -7,8 +7,7 @@ struct ListCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(item.list.name)
-                .font(.serif(22, relativeTo: .headline))
-                .foregroundStyle(Theme.textPrimary)
+                .font(.headline)
                 .lineLimit(2)
 
             Spacer(minLength: 0)
@@ -16,7 +15,7 @@ struct ListCard: View {
             if item.assetCount > 0 {
                 Text("\(item.assetCount) \(item.assetCount == 1 ? "asset" : "assets")")
                     .font(.caption)
-                    .foregroundStyle(Theme.textTertiary)
+                    .foregroundStyle(.secondary)
             }
 
             if !item.list.tags.isEmpty {
@@ -26,8 +25,8 @@ struct ListCard: View {
                             .font(.caption2)
                             .padding(.horizontal, 8)
                             .padding(.vertical, 3)
-                            .background(Theme.surface3, in: Capsule())
-                            .foregroundStyle(Theme.textSecondary)
+                            .background(.fill.secondary, in: .capsule)
+                            .foregroundStyle(.secondary)
                     }
                 }
             }

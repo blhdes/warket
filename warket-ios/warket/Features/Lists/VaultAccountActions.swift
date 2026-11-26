@@ -63,7 +63,7 @@ private struct DeleteVaultSheet: View {
                         if let errorMessage {
                             Label(errorMessage, systemImage: "exclamationmark.triangle.fill")
                                 .font(.footnote)
-                                .foregroundStyle(Theme.error)
+                                .foregroundStyle(.red)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         }
                         deleteButton
@@ -94,10 +94,10 @@ private struct DeleteVaultSheet: View {
         VStack(spacing: 10) {
             Image(systemName: "trash")
                 .font(.largeTitle)
-                .foregroundStyle(Theme.error)
+                .foregroundStyle(.red)
             Text("Delete everything in this vault?")
                 .font(.headline)
-                .foregroundStyle(Theme.textPrimary)
+                .foregroundStyle(.primary)
             Text("""
             Every list and asset in this vault is erased from the server, and any share key \
             you gave out stops working. Your 12 words will still open the vault, but it will be empty.
@@ -105,7 +105,7 @@ private struct DeleteVaultSheet: View {
             Text("Want a copy first? Close this and use Export vault.")
         }
         .font(.footnote)
-        .foregroundStyle(Theme.textSecondary)
+        .foregroundStyle(.secondary)
         .multilineTextAlignment(.center)
         .padding(.top, 8)
     }

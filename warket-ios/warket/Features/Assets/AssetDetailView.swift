@@ -86,12 +86,12 @@ struct AssetDetailView: View {
 
             HStack(alignment: .firstTextBaseline, spacing: 10) {
                 Text(asset.name)
-                    .font(.serif(34, relativeTo: .largeTitle))
-                    .foregroundStyle(Theme.textPrimary)
+                    .font(.title.bold())
                 if !asset.ticker.isEmpty {
                     Text(asset.ticker.uppercased())
-                        .font(.mono(17, weight: .semibold, relativeTo: .headline))
-                        .foregroundStyle(Theme.accent)
+                        .font(.headline)
+                        .monospaced()
+                        .foregroundStyle(.secondary)
                 }
             }
         }
@@ -100,7 +100,7 @@ struct AssetDetailView: View {
     private var summary: some View {
         Text(asset.summary)
             .font(.body)
-            .foregroundStyle(Theme.textSecondary)
+            .foregroundStyle(.secondary)
     }
 
     private var notes: some View {
@@ -143,17 +143,16 @@ struct AssetDetailView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(resource.title.isEmpty ? resource.url : resource.title)
                         .font(.subheadline)
-                        .foregroundStyle(Theme.textPrimary)
                         .lineLimit(1)
                     Text(resource.url)
                         .font(.caption)
-                        .foregroundStyle(Theme.textTertiary)
+                        .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }
                 Spacer(minLength: 0)
                 Image(systemName: "arrow.up.right")
                     .font(.caption)
-                    .foregroundStyle(Theme.textTertiary)
+                    .foregroundStyle(.tertiary)
             }
             .padding(12)
             .glassSurface(in: RoundedRectangle(cornerRadius: 12), interactive: true)
@@ -170,11 +169,11 @@ struct AssetDetailView: View {
                     if let image = phase.image {
                         image.resizable().scaledToFit()
                     } else {
-                        Image(systemName: "link").font(.caption).foregroundStyle(Theme.textTertiary)
+                        Image(systemName: "link").font(.caption).foregroundStyle(.tertiary)
                     }
                 }
             } else {
-                Image(systemName: "link").font(.caption).foregroundStyle(Theme.textTertiary)
+                Image(systemName: "link").font(.caption).foregroundStyle(.tertiary)
             }
         }
         .frame(width: 20, height: 20)
@@ -184,7 +183,7 @@ struct AssetDetailView: View {
         Text(text.uppercased())
             .font(.caption.weight(.semibold))
             .tracking(0.5)
-            .foregroundStyle(Theme.textTertiary)
+            .foregroundStyle(.secondary)
     }
 
     // MARK: Actions

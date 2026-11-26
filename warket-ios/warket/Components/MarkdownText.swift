@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Renders markdown with block-level layout (headings, lists, quotes, code) and
-/// inline formatting (bold/italic/strikethrough/code/links) on the brand theme.
+/// inline formatting (bold/italic/strikethrough/code/links) in system text styles.
 struct MarkdownText: View {
     private let blocks: [MarkdownBlock]
 
@@ -15,7 +15,6 @@ struct MarkdownText: View {
                 render(block)
             }
         }
-        .tint(Theme.accent) // link color
         .environment(\.openURL, OpenURLAction { $0.isWebLink ? .systemAction : .discarded })
     }
 
@@ -24,21 +23,19 @@ struct MarkdownText: View {
         switch block {
         case .heading(let level, let text):
             Text(inline(text))
-                .font(.system(size: headingSize(level), weight: .semibold, design: .serif))
-                .foregroundStyle(Theme.textPrimary)
+                .font(headingFont(level))
                 .padding(.top, level <= 2 ? 4 : 0)
 
         case .paragraph(let text):
             Text(inline(text))
                 .font(.body)
-                .foregroundStyle(Theme.textPrimary)
 
         case .bullet(let items):
             VStack(alignment: .leading, spacing: 6) {
                 ForEach(Array(items.enumerated()), id: \.offset) { _, item in
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        Text("•").foregroundStyle(Theme.accent)
-                        Text(inline(item)).foregroundStyle(Theme.textPrimary)
+                        Text("•").foregroundStyle(.secondary)
+                        Text(inline(item))
                     }
                     .font(.body)
                 }
@@ -49,9 +46,9 @@ struct MarkdownText: View {
                 ForEach(Array(items.enumerated()), id: \.offset) { idx, item in
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
                         Text("\(idx + 1).")
-                            .foregroundStyle(Theme.accent)
+                            .foregroundStyle(.secondary)
                             .monospacedDigit()
-                        Text(inline(item)).foregroundStyle(Theme.textPrimary)
+                        Text(inline(item))
                     }
                     .font(.body)
                 }
@@ -59,38 +56,36 @@ struct MarkdownText: View {
 
         case .quote(let text):
             HStack(spacing: 10) {
-                RoundedRectangle(cornerRadius: 2)
-                    .fill(Theme.accent)
+                RoundedRectangle(cornerRadius: 1.5)
+                    .fill(.tertiary)
                     .frame(width: 3)
                 Text(inline(text))
                     .font(.body)
                     .italic()
-                    .foregroundStyle(Theme.textSecondary)
+                    .foregroundStyle(.secondary)
             }
             .fixedSize(horizontal: false, vertical: true)
 
         case .code(let text):
             Text(text)
-                .font(.system(.callout, design: .monospaced))
-                .foregroundStyle(Theme.textPrimary)
+                .font(.callout)
+                .monospaced()
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(12)
-                .background(Theme.surface2, in: RoundedRectangle(cornerRadius: Theme.Radius.md))
+                .background(.fill.tertiary, in: .rect(cornerRadius: 8, style: .continuous))
 
         case .rule:
-            Rectangle()
-                .fill(Theme.borderDefault)
-                .frame(height: 1)
+            Divider()
                 .padding(.vertical, 2)
         }
     }
 
-    private func headingSize(_ level: Int) -> CGFloat {
+    private func headingFont(_ level: Int) -> Font {
         switch level {
-        case 1: 26
-        case 2: 22
-        case 3: 19
-        default: 17
+        case 1: .title2.bold()
+        case 2: .title3.bold()
+        case 3: .headline
+        default: .subheadline.bold()
         }
     }
 

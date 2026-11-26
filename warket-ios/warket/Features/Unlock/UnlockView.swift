@@ -59,7 +59,7 @@ struct UnlockView: View {
                 if let errorMessage {
                     Label(errorMessage, systemImage: "exclamationmark.triangle.fill")
                         .font(.footnote)
-                        .foregroundStyle(Theme.error)
+                        .foregroundStyle(.red)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
@@ -75,7 +75,7 @@ struct UnlockView: View {
         Button { showingAbout = true } label: {
             Text("About & Privacy")
                 .font(.footnote)
-                .foregroundStyle(Theme.textTertiary)
+                .foregroundStyle(.secondary)
                 .padding(.vertical, 8)
         }
         .buttonStyle(.plain)
@@ -86,7 +86,7 @@ struct UnlockView: View {
         Button { showingShareEntry = true } label: {
             Label("Open a shared vault", systemImage: "eye")
                 .font(.subheadline)
-                .foregroundStyle(Theme.textSecondary)
+                .foregroundStyle(.secondary)
         }
         .buttonStyle(.plain)
     }
@@ -100,13 +100,12 @@ struct UnlockView: View {
                         VStack(spacing: 10) {
                             Image(systemName: "eye")
                                 .font(.largeTitle)
-                                .foregroundStyle(Theme.accent)
+                                .foregroundStyle(.tint)
                             Text("Open a read-only vault")
                                 .font(.headline)
-                                .foregroundStyle(Theme.textPrimary)
                             Text("Paste a share key someone gave you. You'll see their vault but can't make changes.")
                                 .font(.footnote)
-                                .foregroundStyle(Theme.textSecondary)
+                                .foregroundStyle(.secondary)
                                 .multilineTextAlignment(.center)
                         }
                         .padding(.top, 8)
@@ -114,8 +113,7 @@ struct UnlockView: View {
                         TextField("Paste 64-character key", text: $shareKey, axis: .vertical)
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled()
-                            .font(.mono(15, relativeTo: .body))
-                            .foregroundStyle(Theme.textPrimary)
+                            .fontDesign(.monospaced)
                             .lineLimit(2...4)
                             .padding(16)
                             .glassSurface(in: RoundedRectangle(cornerRadius: 16))
@@ -123,7 +121,7 @@ struct UnlockView: View {
                         if let shareError {
                             Label(shareError, systemImage: "exclamationmark.triangle.fill")
                                 .font(.footnote)
-                                .foregroundStyle(Theme.error)
+                                .foregroundStyle(.red)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         }
 
@@ -173,10 +171,9 @@ struct UnlockView: View {
                 .padding(.bottom, 2)
             Text("warket")
                 .font(.serif(64, relativeTo: .largeTitle))
-                .foregroundStyle(Theme.textPrimary)
             Text("Your private asset vault.")
                 .font(.subheadline)
-                .foregroundStyle(Theme.textSecondary)
+                .foregroundStyle(.secondary)
         }
         .multilineTextAlignment(.center)
         .padding(.bottom, 4)
@@ -187,8 +184,7 @@ struct UnlockView: View {
             .textInputAutocapitalization(.never)
             .autocorrectionDisabled()
             .keyboardType(.asciiCapable)
-            .font(.mono(17, relativeTo: .body))
-            .foregroundStyle(Theme.textPrimary)
+            .fontDesign(.monospaced)
             .lineLimit(3...6)
             .padding(16)
             .glassSurface(in: RoundedRectangle(cornerRadius: 16))
@@ -198,19 +194,18 @@ struct UnlockView: View {
         Button(action: generate) {
             Label("Generate new phrase", systemImage: "wand.and.stars")
                 .font(.subheadline.weight(.medium))
-                .foregroundStyle(Theme.accent)
+                .foregroundStyle(.tint)
                 .symbolEffect(.bounce, value: generateTick)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 9)
-                .glassSurface(in: Capsule(), tint: Theme.accent)
+                .glassSurface(in: Capsule(), tint: .accentColor)
         }
         .buttonStyle(.plain)
     }
 
     private var toggleRow: some View {
         Toggle("Keep me signed in", isOn: $remember)
-            .tint(Theme.accent)
-            .foregroundStyle(Theme.textSecondary)
+            .foregroundStyle(.secondary)
             .font(.subheadline)
             .padding(.horizontal, 16)
             .padding(.vertical, 12)

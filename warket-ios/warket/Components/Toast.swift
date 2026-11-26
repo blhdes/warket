@@ -38,16 +38,15 @@ private struct ToastBanner: View {
             Image(systemName: icon).foregroundStyle(tint)
             Text(toast.message)
                 .font(.subheadline)
-                .foregroundStyle(Theme.textPrimary)
                 .lineLimit(2)
             Spacer(minLength: 0)
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
-        .background(Theme.surface3, in: RoundedRectangle(cornerRadius: Theme.Radius.lg))
+        .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 8, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: Theme.Radius.lg)
-                .stroke(Theme.borderDefault, lineWidth: 1)
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .stroke(.separator, lineWidth: 1)
         )
         .shadow(color: .black.opacity(0.35), radius: 12, y: 4)
     }
@@ -62,9 +61,9 @@ private struct ToastBanner: View {
 
     private var tint: Color {
         switch toast.style {
-        case .success: Theme.success
-        case .error: Theme.error
-        case .info: Theme.accent
+        case .success: .green
+        case .error: .red
+        case .info: .accentColor
         }
     }
 }

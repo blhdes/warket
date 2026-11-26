@@ -8,13 +8,11 @@ struct ListRow: View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 4) {
                 Text(item.list.name)
-                    .font(.serif(20, relativeTo: .headline))
-                    .foregroundStyle(Theme.textPrimary)
                     .lineLimit(1)
                 if !item.list.tags.isEmpty {
                     Text(item.list.tags.prefix(3).map { "#\($0)" }.joined(separator: " "))
-                        .font(.caption)
-                        .foregroundStyle(Theme.textTertiary)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }
             }
@@ -23,8 +21,8 @@ struct ListRow: View {
 
             if item.assetCount > 0 {
                 Text("\(item.assetCount)")
-                    .font(.mono(15, relativeTo: .subheadline))
-                    .foregroundStyle(Theme.textTertiary)
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
             }
         }
         .padding(.vertical, 4)

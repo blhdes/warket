@@ -13,27 +13,25 @@ struct PhraseBackupNotice: View {
         VStack(alignment: .leading, spacing: 14) {
             Label {
                 Text("Write these 12 words down. They are the only key to this vault. There is no reset.")
-                    .foregroundStyle(Theme.textPrimary)
             } icon: {
                 Image(systemName: "exclamationmark.shield.fill")
-                    .foregroundStyle(Theme.accent)
+                    .foregroundStyle(.tint)
             }
             .font(.footnote.weight(.medium))
 
             Button(action: copy) {
                 Label("Copy words", systemImage: "doc.on.doc")
                     .font(.subheadline.weight(.medium))
-                    .foregroundStyle(Theme.accent)
+                    .foregroundStyle(.tint)
             }
             .buttonStyle(.plain)
 
             Toggle("I saved my 12 words", isOn: $saved)
-                .tint(Theme.accent)
                 .font(.subheadline)
-                .foregroundStyle(Theme.textSecondary)
+                .foregroundStyle(.secondary)
         }
         .padding(16)
-        .glassSurface(in: RoundedRectangle(cornerRadius: 16), tint: Theme.accent)
+        .glassSurface(in: RoundedRectangle(cornerRadius: 16), tint: .accentColor)
     }
 
     /// The copy stays on this iPhone (no Universal Clipboard to your other devices)

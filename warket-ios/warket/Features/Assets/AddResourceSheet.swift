@@ -31,7 +31,7 @@ struct AddResourceSheet: View {
                         linkCard
                         Text("Paste a link — tap the arrow to pull in its title automatically.")
                             .font(.footnote)
-                            .foregroundStyle(Theme.textSecondary)
+                            .foregroundStyle(.secondary)
                             .padding(.horizontal, 4)
                     }
                     .padding(20)
@@ -81,7 +81,7 @@ struct AddResourceSheet: View {
                 .onSubmit { autofillTitle() }
                 .padding(.vertical, 14)
 
-            Divider().overlay(Theme.borderDefault)
+            Divider()
 
             HStack(spacing: 10) {
                 TextField("Title (optional)", text: $title)
@@ -89,7 +89,6 @@ struct AddResourceSheet: View {
             }
             .padding(.vertical, 14)
         }
-        .foregroundStyle(Theme.textPrimary)
         .padding(.horizontal, 16)
         .glassSurface(in: RoundedRectangle(cornerRadius: 16))
     }
@@ -99,7 +98,7 @@ struct AddResourceSheet: View {
         if fetching {
             Image(systemName: "arrow.down.circle")
                 .symbolEffect(.variableColor.iterative, options: .repeating)
-                .foregroundStyle(Theme.accent)
+                .foregroundStyle(.tint)
         } else if !url.trimmingCharacters(in: .whitespaces).isEmpty {
             Button {
                 autofillTitle(force: true)
@@ -107,7 +106,7 @@ struct AddResourceSheet: View {
                 Image(systemName: "arrow.down.circle")
             }
             .buttonStyle(.plain)
-            .foregroundStyle(Theme.accent)
+            .foregroundStyle(.tint)
             .accessibilityLabel("Fetch title from link")
         }
     }
