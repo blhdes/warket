@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// Asset detail: name/ticker, image, summary, markdown notes, tags, and tappable
 /// resource links, as grouped list sections. Edit/Delete live in the toolbar menu.
@@ -92,7 +93,7 @@ struct AssetDetailView: View {
             isPresented: $confirmingDelete,
             titleVisibility: .visible
         ) {
-            Button("Delete asset", role: .destructive) { Task { await deleteAsset() } }
+            Button("Delete Asset", role: .destructive) { Task { await deleteAsset() } }
             Button("Cancel", role: .cancel) {}
         }
         .screenAlert($alert)
@@ -138,6 +139,12 @@ struct AssetDetailView: View {
                 Image(systemName: "arrow.up.right")
                     .font(.footnote)
                     .foregroundStyle(.tertiary)
+            }
+        }
+        .contextMenu {
+            if let url = URL(string: resource.url), url.isWebLink {
+                Button("Copy Link", systemImage: "doc.on.doc") { UIPasteboard.general.url = url }
+                ShareLink(item: url)
             }
         }
     }
