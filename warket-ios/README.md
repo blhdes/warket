@@ -29,11 +29,13 @@ filtering, in the system fonts (the brand serif only in the wordmark).
 - **Assets**: add, edit, delete, search, tag filtering, drag-reorder.
 - **Asset detail**: image, summary, **markdown notes** (custom block renderer:
   headings, lists, quotes, code, inline styles), tags, tappable resource links
-  with favicons. Only web links (http and https) open.
+  with favicons, as grouped list sections. Only web links (http and https) open,
+  inside the app.
 - **Asset editor**: name and ticker (ticker optional), summary (250-character
   limit, counted like the database does), markdown notes with a live
   Write/Preview toggle, tags, image URL, resources (add, remove, reorder).
-  A resource link's title can be fetched automatically.
+  A resource link's title can be fetched automatically. If saving fails, the
+  editor stays open with your input and shows why.
 - **Sharing**: create a read-only share key for the vault. The server refuses
   every change made with a share key.
 - **Export and import**: JSON files compatible with the web app. Import merges
@@ -42,10 +44,12 @@ filtering, in the system fonts (the brand serif only in the wordmark).
   Support links, also reachable from the unlock screen). Lock vault asks first.
   Delete vault erases everything on the server after two confirmations.
 - **Errors**: people see plain sentences (the server's own message, "No
-  connection", or a generic one). The technical error goes to the log.
+  connection", or a generic one) in a system alert, on the screen or sheet that
+  failed. The technical error goes to the log.
 - **Design**: system backgrounds, lists and buttons. Liquid Glass comes from the
   system bars and controls (iOS 26); the content itself sits on plain surfaces.
-- Haptics, toast banners, light and dark mode (follows the system).
+- Haptics, light and dark mode (follows the system). Success shows as the change
+  itself plus a haptic; sharing and import confirm with an alert.
 
 ## Tech
 
@@ -79,20 +83,18 @@ After adding or removing files or changing project config, re-run `xcodegen gene
 ```
 warket/
   warketApp.swift        app entry
-  RootView.swift         auth gate (Unlock ⇄ Lists) + toast host
+  RootView.swift         auth gate (Unlock ⇄ Lists)
   PrivacyInfo.xcprivacy  privacy manifest required by the App Store
   Config/                Info.plist, Secrets.xcconfig (gitignored)
-  Theme/                 Fonts (wordmark serif + its .ttf),
-                         GlassSurface, MarketPulseBackground (provisional
-                         system fills, removed in later purism sessions)
+  Theme/                 Fonts (wordmark serif + its .ttf)
   Models/                Resource, VaultList, Asset (Codable, tolerant of
                          missing or null columns)
   Core/                  APIClient (server calls, VaultAccess, APIError),
                          VaultRepository, SeedPhrase, Wordlist,
                          VaultTransfer (export/import), TitleFetcher,
                          Session, Haptics, URL+WebLink
-  Components/            MarkdownText, MarkdownParser, TagPill, TagEditor,
-                         TagFilterMenu, View+ReadOnly, FlowLayout, Toast
+  Components/            MarkdownText, MarkdownParser, TagEditor,
+                         TagFilterMenu, View+ReadOnly, FlowLayout, ScreenAlert
   Features/
     Unlock/              UnlockView, ShareEntrySheet, PhraseBackupSection
     Lists/               ListsView, ListCard, ListRow, ListEditorSheet,

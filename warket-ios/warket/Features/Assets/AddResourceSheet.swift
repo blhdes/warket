@@ -24,28 +24,38 @@ struct AddResourceSheet: View {
 
     var body: some View {
         NavigationStack {
-            ZStack {
-                MarketPulseBackground()
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 12) {
-                        linkCard
-                        Text("Paste a link — tap the arrow to pull in its title automatically.")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                            .padding(.horizontal, 4)
+            Form {
+                Section {
+                    TextField("URL", text: $url)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .keyboardType(.URL)
+                        .submitLabel(.done)
+                        .onSubmit { autofillTitle() }
+                    HStack {
+                        TextField("Title (optional)", text: $title)
+                        if fetching {
+                            ProgressView()
+                        } else if !url.trimmingCharacters(in: .whitespaces).isEmpty {
+                            Button("Fetch Title", systemImage: "arrow.down.circle") { autofillTitle(force: true) }
+                                .labelStyle(.iconOnly)
+                                .buttonStyle(.borderless)
+                        }
                     }
-                    .padding(20)
+                } footer: {
+                    Text("Paste a link, then tap the arrow to pull in its title.")
                 }
-                .scrollDismissesKeyboard(.interactively)
             }
+            .scrollBounceBehavior(.basedOnSize)
+            .scrollDismissesKeyboard(.interactively)
             .navigationTitle("Add Resource")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button(role: .close) { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Add") {
+                    Button("Add", role: .confirm) {
                         let trimmedTitle = title.trimmingCharacters(in: .whitespaces)
                         onAdd(Resource.make(title: trimmedTitle.isEmpty ? url : trimmedTitle, url: url))
                         Haptics.selection()
@@ -67,48 +77,6 @@ struct AddResourceSheet: View {
               let host = parsed.host(), host.contains(".")
         else { return false }
         return true
-    }
-
-    /// URL + optional title on one glass slab, the two fields split by a hairline
-    /// so they still read as a single "Link" group.
-    private var linkCard: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            TextField("URL", text: $url)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-                .keyboardType(.URL)
-                .submitLabel(.done)
-                .onSubmit { autofillTitle() }
-                .padding(.vertical, 14)
-
-            Divider()
-
-            HStack(spacing: 10) {
-                TextField("Title (optional)", text: $title)
-                fetchButton
-            }
-            .padding(.vertical, 14)
-        }
-        .padding(.horizontal, 16)
-        .glassSurface(in: RoundedRectangle(cornerRadius: 16))
-    }
-
-    @ViewBuilder
-    private var fetchButton: some View {
-        if fetching {
-            Image(systemName: "arrow.down.circle")
-                .symbolEffect(.variableColor.iterative, options: .repeating)
-                .foregroundStyle(.tint)
-        } else if !url.trimmingCharacters(in: .whitespaces).isEmpty {
-            Button {
-                autofillTitle(force: true)
-            } label: {
-                Image(systemName: "arrow.down.circle")
-            }
-            .buttonStyle(.plain)
-            .foregroundStyle(.tint)
-            .accessibilityLabel("Fetch title from link")
-        }
     }
 
     /// Fetch the page title for the entered URL. Auto-fill only overwrites an
