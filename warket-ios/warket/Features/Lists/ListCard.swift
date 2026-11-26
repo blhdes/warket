@@ -15,6 +15,8 @@ struct ListCard: View {
                 Text("\(item.assetCount) \(item.assetCount == 1 ? "asset" : "assets")")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
+                    .contentTransition(.numericText(value: Double(item.assetCount)))
+                    .animation(.snappy, value: item.assetCount)
             }
             if !item.list.tags.isEmpty {
                 Text(item.list.tags.prefix(3).map { "#\($0)" }.joined(separator: " "))

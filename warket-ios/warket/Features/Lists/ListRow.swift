@@ -23,6 +23,9 @@ struct ListRow: View {
                 Text("\(item.assetCount)")
                     .monospacedDigit()
                     .foregroundStyle(.secondary)
+                    .contentTransition(.numericText(value: Double(item.assetCount)))
+                    .animation(.snappy, value: item.assetCount)
+                    .accessibilityLabel("\(item.assetCount) \(item.assetCount == 1 ? "asset" : "assets")")
             }
         }
         .padding(.vertical, 4)

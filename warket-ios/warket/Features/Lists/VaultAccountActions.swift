@@ -20,7 +20,7 @@ private struct VaultAccountActions: ViewModifier {
                     .presentationDetents([.medium, .large])
             }
             .confirmationDialog("Lock this vault?", isPresented: shows(.lock), titleVisibility: .visible) {
-                Button("Lock vault", role: .destructive) { session.signOut() }
+                Button("Lock Vault", role: .destructive) { session.signOut() }
                 Button("Cancel", role: .cancel) {}
             } message: {
                 Text("You will need your 12 words to get back in.")
@@ -89,7 +89,7 @@ private struct DeleteVaultSheet: View {
         }
         .interactiveDismissDisabled(deleting)
         .confirmationDialog("Delete this vault forever?", isPresented: $confirming, titleVisibility: .visible) {
-            Button("Delete forever", role: .destructive) { Task { await deleteVault() } }
+            Button("Delete Forever", role: .destructive) { Task { await deleteVault() } }
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("This cannot be undone.")

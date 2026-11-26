@@ -7,14 +7,11 @@ struct TagFilterMenu: View {
     @Binding var selection: String?
 
     var body: some View {
-        Group {
-            if selection == nil {
-                menu
-            } else {
-                menu.buttonStyle(.glassProminent)
-            }
+        if selection == nil {
+            menu
+        } else {
+            menu.buttonStyle(.glassProminent)
         }
-        .sensoryFeedback(.selection, trigger: selection)
     }
 
     private var menu: some View {
