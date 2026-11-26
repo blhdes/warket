@@ -12,7 +12,6 @@ enum ListLayout: String {
 struct ListsView: View {
     let access: VaultAccess
     @Environment(Session.self) private var session
-    @Environment(ToastCenter.self) private var toast
 
     @AppStorage("warket.listsLayout") private var layout: ListLayout = .list
 
@@ -31,6 +30,7 @@ struct ListsView: View {
 
     @State private var transferRequest: TransferRequest?
     @State private var accountPrompt: AccountPrompt?
+    @State private var alert: ScreenAlert?
 
     private enum Phase: Equatable { case loading, loaded, failed(String) }
 
@@ -59,13 +59,13 @@ struct ListsView: View {
         }
         .sheet(isPresented: $showingCreate) {
             ListEditorSheet(mode: .create) { name, tags in
-                await createList(name: name, tags: tags)
+                try await createList(name: name, tags: tags)
             }
             .presentationDetents([.medium, .large])
         }
         .sheet(item: $editingList) { item in
             ListEditorSheet(mode: .edit(item.list)) { name, tags in
-                await updateList(item, name: name, tags: tags)
+                try await updateList(item, name: name, tags: tags)
             }
             .presentationDetents([.medium, .large])
         }
@@ -82,6 +82,7 @@ struct ListsView: View {
         }
         .vaultTransferActions($transferRequest, repo: repo) { await load() }
         .vaultAccountActions($accountPrompt, repo: repo)
+        .screenAlert($alert)
     }
 
     // MARK: - Content
@@ -295,44 +296,38 @@ struct ListsView: View {
         }
     }
 
-    private func createList(name: String, tags: [String]) async -> Bool {
+    /// Throws so the editor sheet can stay open and show the error.
+    private func createList(name: String, tags: [String]) async throws {
         do {
             try await repo.createList(name: name, tags: tags)
-            Haptics.success()
-            toast.show("List created", .success)
-            await load()
-            return true
         } catch {
             Haptics.error()
-            toast.show(error.userMessage, .error)
-            return false
+            throw error
         }
+        Haptics.success()
+        await load()
     }
 
-    private func updateList(_ item: ListWithAssetCount, name: String, tags: [String]) async -> Bool {
+    private func updateList(_ item: ListWithAssetCount, name: String, tags: [String]) async throws {
         do {
             try await repo.updateList(id: item.list.id, name: name, tags: tags)
-            Haptics.success()
-            toast.show("List updated", .success)
-            await load()
-            return true
         } catch {
             Haptics.error()
-            toast.show(error.userMessage, .error)
-            return false
+            throw error
         }
+        Haptics.success()
+        await load()
     }
 
     private func delete(_ item: ListWithAssetCount) async {
         do {
             try await repo.deleteList(id: item.list.id)
             Haptics.success()
-            toast.show("List deleted", .success)
             pendingDelete = nil
             await load()
         } catch {
             Haptics.error()
-            toast.show(error.userMessage, .error)
+            alert = ScreenAlert(title: "Couldn't Delete List", message: error.userMessage)
         }
     }
 
@@ -347,7 +342,8 @@ struct ListsView: View {
             } catch {
                 // Cancelled means a newer drag replaced this one and will save the order itself.
                 guard !Task.isCancelled else { return }
-                toast.show(error.userMessage, .error)
+                Haptics.error()
+                alert = ScreenAlert(title: "Couldn't Save the Order", message: error.userMessage)
                 await load() // nothing was saved, so show the server's order again
             }
         }

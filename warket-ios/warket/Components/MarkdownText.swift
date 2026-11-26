@@ -15,7 +15,7 @@ struct MarkdownText: View {
                 render(block)
             }
         }
-        .environment(\.openURL, OpenURLAction { $0.isWebLink ? .systemAction : .discarded })
+        .environment(\.openURL, OpenURLAction { $0.isWebLink ? .systemAction(prefersInApp: true) : .discarded })
     }
 
     @ViewBuilder

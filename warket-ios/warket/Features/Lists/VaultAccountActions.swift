@@ -46,7 +46,6 @@ extension View {
 private struct DeleteVaultSheet: View {
     let repo: VaultRepository
     @Environment(Session.self) private var session
-    @Environment(ToastCenter.self) private var toast
     @Environment(\.dismiss) private var dismiss
 
     @State private var confirming = false
@@ -104,11 +103,10 @@ private struct DeleteVaultSheet: View {
         do {
             try await repo.deleteVault()
             Haptics.success()
-            toast.show("Vault deleted", .success)
             dismiss()
             session.signOut()
         } catch {
-            // Shown in the sheet: a toast would sit hidden behind it.
+            // Shown in the sheet itself, which stays open so the person can try again.
             Haptics.error()
             errorMessage = error.userMessage
         }

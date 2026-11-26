@@ -13,11 +13,10 @@ private struct VaultTransferActions: ViewModifier {
     @Binding var request: TransferRequest?
     let repo: VaultRepository
     let onImported: () async -> Void
-    @Environment(ToastCenter.self) private var toast
-
     @State private var exportDoc: JSONDocument?
     @State private var showExporter = false
     @State private var showImporter = false
+    @State private var alert: ScreenAlert?
 
     func body(content: Content) -> some View {
         content
@@ -28,10 +27,10 @@ private struct VaultTransferActions: ViewModifier {
                 defaultFilename: exportFilename
             ) { result in
                 if case .failure(let error) = result {
-                    toast.show(error.userMessage, .error)
+                    Haptics.error()
+                    alert = ScreenAlert(title: "Couldn't Export Vault", message: error.userMessage)
                 } else {
                     Haptics.success()
-                    toast.show("Vault exported", .success)
                 }
             }
             .fileImporter(
@@ -49,6 +48,7 @@ private struct VaultTransferActions: ViewModifier {
                 case .share: Task { await shareVault() }
                 }
             }
+            .screenAlert($alert)
     }
 
     private var exportFilename: String {
@@ -69,7 +69,7 @@ private struct VaultTransferActions: ViewModifier {
             showExporter = true
         } catch {
             Haptics.error()
-            toast.show(error.userMessage, .error)
+            alert = ScreenAlert(title: "Couldn't Export Vault", message: error.userMessage)
         }
     }
 
@@ -78,7 +78,7 @@ private struct VaultTransferActions: ViewModifier {
         switch result {
         case .success(let picked): url = picked
         case .failure(let error):
-            toast.show(error.userMessage, .error)
+            importFailed(error.userMessage)
             return
         }
 
@@ -89,33 +89,40 @@ private struct VaultTransferActions: ViewModifier {
             let data = try Data(contentsOf: url)
             let decoded = try JSONDecoder().decode(VaultExport.self, from: data)
             if let message = VaultExport.validate(decoded) {
-                toast.show(message, .error)
+                importFailed(message)
                 return
             }
             let summary = try await repo.importVault(decoded)
             Haptics.success()
-            toast.show("Imported \(summary.lists) lists, \(summary.assets) assets", .success)
+            alert = ScreenAlert(title: "Import Complete",
+                                message: "Imported \(summary.lists) lists, \(summary.assets) assets.")
             await onImported()
         } catch is DecodingError {
-            Haptics.error()
-            toast.show("Invalid or unrecognized file", .error)
+            importFailed("Invalid or unrecognized file.")
         } catch {
-            Haptics.error()
-            toast.show(error.userMessage, .error)
+            importFailed(error.userMessage)
         }
     }
 
+    private func importFailed(_ message: String) {
+        Haptics.error()
+        alert = ScreenAlert(title: "Couldn't Import", message: message)
+    }
+
     /// Create/refresh a read-only share key and copy it to the clipboard, so it
-    /// can be pasted into another device's "Open a shared vault" field.
+    /// can be pasted into another device's "Open a Shared Vault" field.
     private func shareVault() async {
         do {
             let key = try await repo.upsertShare()
             UIPasteboard.general.string = key
             Haptics.success()
-            toast.show("Share key copied to clipboard", .success)
+            alert = ScreenAlert(
+                title: "Share Key Copied",
+                message: "Paste it into Open a Shared Vault on the other iPhone. Anyone with this key can look but can't change anything."
+            )
         } catch {
             Haptics.error()
-            toast.show(error.userMessage, .error)
+            alert = ScreenAlert(title: "Couldn't Share", message: error.userMessage)
         }
     }
 }

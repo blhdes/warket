@@ -6,7 +6,7 @@ extension Logger {
 }
 
 extension Error {
-    /// A short sentence that is safe to show in a toast or an error screen.
+    /// A short sentence that is safe to show in an alert or an error screen.
     /// The server's messages are already written for people. Anything unexpected
     /// gets a plain sentence, and the real error goes to the log.
     var userMessage: String {

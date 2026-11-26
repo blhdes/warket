@@ -6,7 +6,6 @@ struct AssetsView: View {
     let list: VaultList
     let repo: VaultRepository
     var readOnly = false
-    @Environment(ToastCenter.self) private var toast
 
     @State private var assets: [Asset] = []
     @State private var phase: Phase = .loading
@@ -18,6 +17,7 @@ struct AssetsView: View {
     @State private var pendingDelete: Asset?
     @State private var reloadToken = UUID()
     @State private var reorderTask: Task<Void, Never>?
+    @State private var alert: ScreenAlert?
 
     private enum Phase: Equatable { case loading, loaded, failed(String) }
 
@@ -36,10 +36,10 @@ struct AssetsView: View {
             AssetDetailView(asset: asset, repo: repo, readOnly: readOnly) { reloadToken = UUID() }
         }
         .sheet(isPresented: $showingCreate) {
-            AssetEditorSheet(mode: .create) { draft in await createAsset(draft) }
+            AssetEditorSheet(mode: .create) { draft in try await createAsset(draft) }
         }
         .sheet(item: $editing) { asset in
-            AssetEditorSheet(mode: .edit(asset)) { draft in await updateAsset(asset, draft) }
+            AssetEditorSheet(mode: .edit(asset)) { draft in try await updateAsset(asset, draft) }
         }
         .confirmationDialog(
             "Delete \u{201C}\(pendingDelete?.name ?? "")\u{201D}?",
@@ -50,6 +50,7 @@ struct AssetsView: View {
             Button("Delete asset", role: .destructive) { Task { await delete(asset) } }
             Button("Cancel", role: .cancel) {}
         }
+        .screenAlert($alert)
     }
 
     // MARK: - Content
@@ -185,7 +186,8 @@ struct AssetsView: View {
         }
     }
 
-    private func createAsset(_ draft: AssetDraft) async -> Bool {
+    /// Throws so the editor sheet can stay open and show the error.
+    private func createAsset(_ draft: AssetDraft) async throws {
         do {
             try await repo.addAsset(
                 listId: list.id,
@@ -197,45 +199,38 @@ struct AssetsView: View {
                 resources: draft.resources,
                 imageUrl: draft.imageUrl.isEmpty ? nil : draft.imageUrl
             )
-            Haptics.success()
-            toast.show("Asset added", .success)
-            await load()
-            return true
         } catch {
             Haptics.error()
-            toast.show(error.userMessage, .error)
-            return false
+            throw error
         }
+        Haptics.success()
+        await load()
     }
 
-    private func updateAsset(_ original: Asset, _ draft: AssetDraft) async -> Bool {
+    private func updateAsset(_ original: Asset, _ draft: AssetDraft) async throws {
         do {
             try await repo.updateAsset(id: original.id, fields: AssetUpdate(
                 name: draft.name, ticker: draft.ticker, summary: draft.summary,
                 description: draft.description, tags: draft.tags,
                 resources: draft.resources, image_url: draft.imageUrl
             ))
-            Haptics.success()
-            toast.show("Asset updated", .success)
-            await load()
-            return true
         } catch {
             Haptics.error()
-            toast.show(error.userMessage, .error)
-            return false
+            throw error
         }
+        Haptics.success()
+        await load()
     }
 
     private func delete(_ asset: Asset) async {
         do {
             try await repo.deleteAsset(id: asset.id)
             Haptics.success()
-            toast.show("Asset deleted", .success)
             pendingDelete = nil
             await load()
         } catch {
             Haptics.error()
-            toast.show(error.userMessage, .error)
+            alert = ScreenAlert(title: "Couldn't Delete Asset", message: error.userMessage)
         }
     }
 
@@ -250,7 +245,8 @@ struct AssetsView: View {
             } catch {
                 // Cancelled means a newer drag replaced this one and will save the order itself.
                 guard !Task.isCancelled else { return }
-                toast.show(error.userMessage, .error)
+                Haptics.error()
+                alert = ScreenAlert(title: "Couldn't Save the Order", message: error.userMessage)
                 await load() // nothing was saved, so show the server's order again
             }
         }

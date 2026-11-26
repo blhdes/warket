@@ -21,9 +21,8 @@ struct AssetEditorSheet: View {
     }
 
     let mode: Mode
-    /// Returns `true` on a successful save. On `false` the sheet stays open so
-    /// the user can retry without losing their input.
-    let onSave: (AssetDraft) async -> Bool
+    /// Throws when the server refuses the change. The sheet stays open, keeps the input and shows why.
+    let onSave: (AssetDraft) async throws -> Void
 
     @Environment(\.dismiss) private var dismiss
 
@@ -37,6 +36,7 @@ struct AssetEditorSheet: View {
     @State private var notesMode: NotesMode = .write
     @State private var showingAddResource = false
     @State private var isSaving = false
+    @State private var saveError: ScreenAlert?
 
     private enum NotesMode: String, CaseIterable {
         case write = "Write"
@@ -49,7 +49,7 @@ struct AssetEditorSheet: View {
         var resource: Resource
     }
 
-    init(mode: Mode, onSave: @escaping (AssetDraft) async -> Bool) {
+    init(mode: Mode, onSave: @escaping (AssetDraft) async throws -> Void) {
         self.mode = mode
         self.onSave = onSave
         switch mode {
@@ -86,13 +86,15 @@ struct AssetEditorSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button(role: .close) { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") { Task { await save() } }
+                    Button(role: .confirm) { Task { await save() } }
                         .disabled(trimmedName.isEmpty || isSaving)
+                        .accessibilityLabel("Save")
                 }
             }
+            .screenAlert($saveError)
             .sheet(isPresented: $showingAddResource) {
                 AddResourceSheet { resources.append(EditableResource(resource: $0)) }
             }
@@ -211,6 +213,7 @@ struct AssetEditorSheet: View {
 
     private func save() async {
         isSaving = true
+        defer { isSaving = false }
         let draft = AssetDraft(
             name: trimmedName,
             ticker: ticker.trimmingCharacters(in: .whitespaces),
@@ -220,10 +223,11 @@ struct AssetEditorSheet: View {
             resources: resources.map(\.resource),
             imageUrl: imageUrl.trimmingCharacters(in: .whitespaces)
         )
-        if await onSave(draft) {
+        do {
+            try await onSave(draft)
             dismiss()
-        } else {
-            isSaving = false
+        } catch {
+            saveError = ScreenAlert(title: "Couldn't Save", message: error.userMessage)
         }
     }
 }
