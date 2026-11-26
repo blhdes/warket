@@ -19,6 +19,8 @@ struct AssetsView: View {
     @State private var reorderTask: Task<Void, Never>?
     @State private var alert: ScreenAlert?
 
+    @Namespace private var zoom
+
     private enum Phase: Equatable { case loading, loaded, failed(String) }
 
     var body: some View {
@@ -37,6 +39,7 @@ struct AssetsView: View {
         }
         .sheet(isPresented: $showingCreate) {
             AssetEditorSheet(mode: .create) { draft in try await createAsset(draft) }
+                .navigationTransition(.zoom(sourceID: "newAsset", in: zoom))
         }
         .sheet(item: $editing) { asset in
             AssetEditorSheet(mode: .edit(asset)) { draft in try await updateAsset(asset, draft) }
@@ -47,7 +50,7 @@ struct AssetsView: View {
             titleVisibility: .visible,
             presenting: pendingDelete
         ) { asset in
-            Button("Delete asset", role: .destructive) { Task { await delete(asset) } }
+            Button("Delete Asset", role: .destructive) { Task { await delete(asset) } }
             Button("Cancel", role: .cancel) {}
         }
         .screenAlert($alert)
@@ -140,6 +143,7 @@ struct AssetsView: View {
             ToolbarItem(placement: .bottomBar) {
                 Button("New Asset", systemImage: "plus") { showingCreate = true }
             }
+            .matchedTransitionSource(id: "newAsset", in: zoom)
         }
     }
 

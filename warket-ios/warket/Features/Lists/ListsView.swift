@@ -32,6 +32,8 @@ struct ListsView: View {
     @State private var accountPrompt: AccountPrompt?
     @State private var alert: ScreenAlert?
 
+    @Namespace private var zoom
+
     private enum Phase: Equatable { case loading, loaded, failed(String) }
 
     private let columns = [
@@ -55,13 +57,14 @@ struct ListsView: View {
         .task { await load() }
         .refreshable { await load() }
         .navigationDestination(for: VaultList.self) { list in
-            AssetsView(list: list, repo: repo, readOnly: readOnly)
+            assetsScreen(list)
         }
         .sheet(isPresented: $showingCreate) {
             ListEditorSheet(mode: .create) { name, tags in
                 try await createList(name: name, tags: tags)
             }
             .presentationDetents([.medium, .large])
+            .navigationTransition(.zoom(sourceID: "newList", in: zoom))
         }
         .sheet(item: $editingList) { item in
             ListEditorSheet(mode: .edit(item.list)) { name, tags in
@@ -75,7 +78,7 @@ struct ListsView: View {
             titleVisibility: .visible,
             presenting: pendingDelete
         ) { item in
-            Button("Delete list & \(item.assetCount) asset\(item.assetCount == 1 ? "" : "s")", role: .destructive) {
+            Button("Delete List & \(item.assetCount) Asset\(item.assetCount == 1 ? "" : "s")", role: .destructive) {
                 Task { await delete(item) }
             }
             Button("Cancel", role: .cancel) {}
@@ -162,6 +165,7 @@ struct ListsView: View {
                 ForEach(filtered) { item in
                     let card = NavigationLink(value: item.list) {
                         ListCard(item: item)
+                            .matchedTransitionSource(id: item.list.id, in: zoom)
                     }
                     .buttonStyle(.plain)
 
@@ -178,6 +182,17 @@ struct ListsView: View {
             .padding(16)
         }
         .background(Color(.systemGroupedBackground))
+    }
+
+    /// The grid zooms from the tapped tile; the list keeps the normal push (it has no tile to grow from).
+    @ViewBuilder
+    private func assetsScreen(_ list: VaultList) -> some View {
+        let screen = AssetsView(list: list, repo: repo, readOnly: readOnly)
+        if layout == .grid {
+            screen.navigationTransition(.zoom(sourceID: list.id, in: zoom))
+        } else {
+            screen
+        }
     }
 
     @ToolbarContentBuilder
@@ -199,6 +214,7 @@ struct ListsView: View {
             ToolbarItem(placement: .bottomBar) {
                 Button("New List", systemImage: "plus") { showingCreate = true }
             }
+            .matchedTransitionSource(id: "newList", in: zoom)
         }
     }
 
