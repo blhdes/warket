@@ -26,7 +26,7 @@
 | Primary language | English (U.S.). The app is English only (no String Catalog) |
 | Listing locales | en-US only (your pick, 2026-11-13) |
 | Devices / orientation | iPhone only, portrait |
-| Minimum iOS | 17.0 |
+| Minimum iOS | 26.0 |
 | Version (build) | 1.0.0 (1) |
 | Price | Free (set 2026-11-13, your OK) |
 | Category | Productivity, secondary Finance (set 2026-11-13, your OK; Risks 1) |
@@ -40,6 +40,7 @@
 
 - 2026-11-13: Keep bundle ID `com.blhdes.warket`. It is already in the project, and the Keychain service of the saved vault key uses the same name. The account mixes `agu.*` and `app.*`, so there is no single convention to follow.
 - 2026-11-13: iPhone only, portrait, iOS 17+, for 1.0.
+- 2026-11-26: Minimum iOS raised to 26.0 (purism plan S1, decision DP1). 1.0 is not out yet, so no one who has the app is left behind. iOS 26 runs on iPhone 11 and later (leaves out XS and XR).
 - 2026-11-13: Encryption exempt (`ITSAppUsesNonExemptEncryption = NO`): the app only uses HTTPS.
 - 2026-11-13: Privacy and support pages at `asset-cafe.vercel.app/privacy` and `/support` (plan D9, no own domain, D16). Changing them later needs an app update.
 - 2026-11-13: Never write "encrypted" in store text, pages or review notes. The server stores vault content as plain text, kept apart per vault. Safe wording: "no account, no email, your 12 words never leave your phone".

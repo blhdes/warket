@@ -25,7 +25,7 @@ filtering, on the brand's embedded fonts.
   A share key pasted here opens that vault read-only.
 - **Lists**: native List *or* 2-column grid (persisted toggle), create, edit,
   delete, search (by list name *or* a contained asset's name/ticker), tag-chip
-  filtering, drag-reorder. If loading fails, a "Try again" button reloads.
+  filtering, drag-reorder. If loading fails, a "Try Again" button reloads.
 - **Assets**: add, edit, delete, search, tag filtering, drag-reorder.
 - **Asset detail**: image, summary, **markdown notes** (custom block renderer:
   headings, lists, quotes, code, inline styles), tags, tappable resource links
@@ -43,18 +43,13 @@ filtering, on the brand's embedded fonts.
   Delete vault erases everything on the server after two confirmations.
 - **Errors**: people see plain sentences (the server's own message, "No
   connection", or a generic one). The technical error goes to the log.
-- **Design**: Liquid Glass surfaces floating over an animated "market pulse"
-  mesh background (the native echo of the web landing), a bold gradient unlock
-  CTA, and subtle entrance and symbol motion. Gracefully degrades on older OSes
-  and freezes the background under Reduce Motion.
+- **Design**: system backgrounds, lists and buttons. Liquid Glass comes from the
+  system bars and controls (iOS 26); the content itself sits on plain surfaces.
 - Haptics, toast banners, light and dark mode (follows the system).
 
 ## Tech
 
-- SwiftUI, iOS 17+, Swift.
-- Liquid Glass (iOS 26) and animated `MeshGradient` (iOS 18) used where available,
-  each gated behind `#available` with material or static-gradient fallbacks down
-  to the iOS 17 floor.
+- SwiftUI, Swift. iOS 26+, Liquid Glass from the system components.
 - No third-party packages. `Core/APIClient.swift` talks to the server with
   `URLSession`, following the contract in `../server/API.md`. The server address
   is `API_BASE_URL` in `warket/Config/Info.plist` and ships inside the app.
