@@ -6,11 +6,17 @@
 > This is audit plan Session 9. The plan (`.claude/plans/audit-plan.md`, local only) adds Session 8b, a new
 > logo and Icon Composer icon, between phase 3 and phase 4 here.
 
-## Next session (saved 2026-11-18)
+## Next session (saved 2026-11-26)
 
-1. Ask the owner which app bugs they found and fix those first (new branch from `main`, owner tests on the iPhone).
-2. Owner: press Publicar on the App Privacy page, and run the iPhone tests (plan S6, S8, section 7, S8b).
-3. Then: review notes (`store/review-notes.txt`, demo share key in `store/demo-vault.env`), screenshots, build, submit.
+The native redesign (purism plan S1-S6, `.claude/plans/purism-plan.md`) is done on six chained branches,
+`purism/s1-quitar-lo-web` to `purism/s6-pulido`, not merged to `main` yet. Screenshots can start once it is.
+
+1. Owner: run the iPhone tests of purism S1-S6 (plan sections 7 and 9) and of the audit plan (S6, S8,
+   section 7, S8b); fix what they find; merge the purism branches into `main`.
+2. Owner: press Publicar on the App Privacy page.
+3. Then: review notes (`store/review-notes.txt`, not written yet: name buttons as the app now shows them, in
+   Title Case, e.g. "Open a Shared Vault", "Access Vault", "Share Read-Only Key"; demo share key in
+   `store/demo-vault.env`), screenshots, build, submit.
 
 ## Quick reference
 

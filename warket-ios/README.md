@@ -30,7 +30,7 @@ filtering, in the system fonts (the brand serif only in the wordmark).
 - **Asset detail**: image, summary, **markdown notes** (custom block renderer:
   headings, lists, quotes, code, inline styles), tags, tappable resource links
   with favicons, as grouped list sections. Only web links (http and https) open,
-  inside the app.
+  inside the app; a long press copies or shares a link.
 - **Asset editor**: name and ticker (ticker optional), summary (250-character
   limit, counted like the database does), markdown notes with a live
   Write/Preview toggle, tags, image URL, resources (add, remove, reorder).
@@ -46,8 +46,11 @@ filtering, in the system fonts (the brand serif only in the wordmark).
 - **Errors**: people see plain sentences (the server's own message, "No
   connection", or a generic one) in a system alert, on the screen or sheet that
   failed. The technical error goes to the log.
-- **Design**: system backgrounds, lists and buttons. Liquid Glass comes from the
-  system bars and controls (iOS 26); the content itself sits on plain surfaces.
+- **Design**: system components; Liquid Glass comes from the system bars, sheets
+  and controls; the brand lives in the icon, the mark, the wordmark and the teal
+  accent. Sheets zoom out of the button that opens them, grid tiles zoom into
+  their list, and an editor with unsaved changes asks before a swipe closes it
+  (iOS 27; on iOS 26 the swipe waits until you save or tap ✕).
 - Haptics, light and dark mode (follows the system). Success shows as the change
   itself plus a haptic; sharing and import confirm with an alert.
 
@@ -94,7 +97,8 @@ warket/
                          VaultTransfer (export/import), TitleFetcher,
                          Session, Haptics, URL+WebLink
   Components/            MarkdownText, MarkdownParser, TagEditor,
-                         TagFilterMenu, View+ReadOnly, FlowLayout, ScreenAlert
+                         TagFilterMenu, View+ReadOnly, FlowLayout, ScreenAlert,
+                         OSFeatures (the only iOS version check)
   Features/
     Unlock/              UnlockView, ShareEntrySheet, PhraseBackupSection
     Lists/               ListsView, ListCard, ListRow, ListEditorSheet,
