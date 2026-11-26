@@ -55,29 +55,36 @@ private struct DeleteVaultSheet: View {
 
     var body: some View {
         NavigationStack {
-            ZStack {
-                MarketPulseBackground()
-                ScrollView {
-                    VStack(spacing: 20) {
-                        warning
-                        if let errorMessage {
-                            Label(errorMessage, systemImage: "exclamationmark.triangle.fill")
-                                .font(.footnote)
-                                .foregroundStyle(.red)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                        }
-                        deleteButton
+            Form {
+                Section {
+                    Label {
+                        Text("Delete everything in this vault?").font(.headline)
+                    } icon: {
+                        Image(systemName: "trash").foregroundStyle(.red)
                     }
-                    .padding(24)
-                    .frame(maxWidth: 440)
-                    .frame(maxWidth: .infinity)
+                    Text("""
+                    Every list and asset in this vault is erased from the server, and any share key \
+                    you gave out stops working. Your 12 words will still open the vault, but it will be empty.
+                    """)
+                    .foregroundStyle(.secondary)
+                } footer: {
+                    Text("Want a copy first? Close this and use Export Vault.")
+                }
+                Section {
+                    Button(role: .destructive) { confirming = true } label: {
+                        if deleting { ProgressView() } else { Text("Delete Vault") }
+                    }
+                    .disabled(deleting)
+                } footer: {
+                    if let errorMessage { Text(errorMessage).foregroundStyle(.red) }
                 }
             }
-            .navigationTitle("Delete vault")
+            .scrollBounceBehavior(.basedOnSize)
+            .navigationTitle("Delete Vault")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }.disabled(deleting)
+                    Button(role: .close) { dismiss() }.disabled(deleting)
                 }
             }
         }
@@ -88,44 +95,6 @@ private struct DeleteVaultSheet: View {
         } message: {
             Text("This cannot be undone.")
         }
-    }
-
-    private var warning: some View {
-        VStack(spacing: 10) {
-            Image(systemName: "trash")
-                .font(.largeTitle)
-                .foregroundStyle(.red)
-            Text("Delete everything in this vault?")
-                .font(.headline)
-                .foregroundStyle(.primary)
-            Text("""
-            Every list and asset in this vault is erased from the server, and any share key \
-            you gave out stops working. Your 12 words will still open the vault, but it will be empty.
-            """)
-            Text("Want a copy first? Close this and use Export vault.")
-        }
-        .font(.footnote)
-        .foregroundStyle(.secondary)
-        .multilineTextAlignment(.center)
-        .padding(.top, 8)
-    }
-
-    private var deleteButton: some View {
-        Button { confirming = true } label: {
-            Group {
-                if deleting {
-                    ProgressView()
-                } else {
-                    Text("Delete Vault")
-                }
-            }
-            .frame(maxWidth: .infinity)
-        }
-        .buttonStyle(.borderedProminent)
-        .buttonBorderShape(.capsule)
-        .controlSize(.large)
-        .tint(.red)
-        .disabled(deleting)
     }
 
     private func deleteVault() async {
