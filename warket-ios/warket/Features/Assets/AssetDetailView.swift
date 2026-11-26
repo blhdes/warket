@@ -1,19 +1,21 @@
 import SwiftUI
+import UIKit
 
-/// Asset detail: image, name/ticker, summary, markdown notes, tags, and tappable
-/// resource links. Edit/Delete live in the toolbar menu.
+/// Asset detail: name/ticker, image, summary, markdown notes, tags, and tappable
+/// resource links, as grouped list sections. Edit/Delete live in the toolbar menu.
 struct AssetDetailView: View {
     @State private var asset: Asset
     let repo: VaultRepository
     let readOnly: Bool
     let onChanged: () -> Void
 
-    @Environment(ToastCenter.self) private var toast
     @Environment(\.openURL) private var openURL
     @Environment(\.dismiss) private var dismiss
+    @ScaledMetric(relativeTo: .body) private var faviconSize: CGFloat = 20
 
     @State private var editing = false
     @State private var confirmingDelete = false
+    @State private var alert: ScreenAlert?
 
     init(asset: Asset, repo: VaultRepository, readOnly: Bool = false, onChanged: @escaping () -> Void) {
         _asset = State(initialValue: asset)
@@ -23,20 +25,50 @@ struct AssetDetailView: View {
     }
 
     var body: some View {
-        ZStack {
-            MarketPulseBackground()
-            ScrollView {
-                VStack(alignment: .leading, spacing: 22) {
-                    header
-                    if !asset.summary.isEmpty { summary }
-                    if !asset.description.isEmpty { notes }
-                    if !asset.tags.isEmpty { tags }
-                    if !asset.resources.isEmpty { resources }
+        List {
+            Section {
+                header
+                    .listRowBackground(Color.clear)
+            }
+            if let raw = asset.imageUrl, !raw.isEmpty, let url = URL(string: raw) {
+                Section {
+                    AsyncImage(url: url) { phase in
+                        if let image = phase.image {
+                            image.resizable().scaledToFit()
+                        } else {
+                            Color.clear
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 160)
+                    .accessibilityHidden(true)
                 }
-                .padding(20)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            if !asset.summary.isEmpty {
+                Section { Text(asset.summary) }
+            }
+            if !asset.description.isEmpty {
+                Section("Notes") { MarkdownText(asset.description) }
+            }
+            if !asset.tags.isEmpty {
+                Section("Tags") {
+                    FlowLayout(spacing: 8) {
+                        ForEach(asset.tags, id: \.self) { tag in
+                            Text("#\(tag)").foregroundStyle(.tint)
+                        }
+                    }
+                }
+            }
+            if !asset.resources.isEmpty {
+                Section("Resources") {
+                    ForEach(Array(asset.resources.enumerated()), id: \.offset) { _, resource in
+                        resourceRow(resource)
+                    }
+                }
             }
         }
+        .listStyle(.insetGrouped)
+        .scrollBounceBehavior(.basedOnSize)
         .navigationTitle(asset.name)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -48,84 +80,37 @@ struct AssetDetailView: View {
                             Label("Delete", systemImage: "trash")
                         }
                     } label: {
-                        Image(systemName: "ellipsis.circle")
+                        Label("More", systemImage: "ellipsis")
                     }
                 }
             }
         }
         .sheet(isPresented: $editing) {
-            AssetEditorSheet(mode: .edit(asset)) { draft in await applyEdit(draft) }
+            AssetEditorSheet(mode: .edit(asset)) { draft in try await applyEdit(draft) }
         }
         .confirmationDialog(
             "Delete \u{201C}\(asset.name)\u{201D}?",
             isPresented: $confirmingDelete,
             titleVisibility: .visible
         ) {
-            Button("Delete asset", role: .destructive) { Task { await deleteAsset() } }
+            Button("Delete Asset", role: .destructive) { Task { await deleteAsset() } }
             Button("Cancel", role: .cancel) {}
         }
+        .screenAlert($alert)
     }
 
     // MARK: Sections
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            if let raw = asset.imageUrl, !raw.isEmpty, let url = URL(string: raw) {
-                AsyncImage(url: url) { phase in
-                    if let image = phase.image {
-                        image.resizable().scaledToFit()
-                    } else {
-                        Color.clear
-                    }
-                }
-                .frame(maxWidth: .infinity)
-                .frame(height: 160)
-                .glassSurface(in: RoundedRectangle(cornerRadius: 14))
-                .clipShape(RoundedRectangle(cornerRadius: 14))
-            }
-
-            HStack(alignment: .firstTextBaseline, spacing: 10) {
-                Text(asset.name)
-                    .font(.serif(34, relativeTo: .largeTitle))
-                    .foregroundStyle(Theme.textPrimary)
-                if !asset.ticker.isEmpty {
-                    Text(asset.ticker.uppercased())
-                        .font(.mono(17, weight: .semibold, relativeTo: .headline))
-                        .foregroundStyle(Theme.accent)
-                }
-            }
-        }
-    }
-
-    private var summary: some View {
-        Text(asset.summary)
-            .font(.body)
-            .foregroundStyle(Theme.textSecondary)
-    }
-
-    private var notes: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            sectionLabel("Notes")
-            MarkdownText(asset.description)
-        }
-    }
-
-    private var tags: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            sectionLabel("Tags")
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 6) {
-                    ForEach(asset.tags, id: \.self) { TagPill(text: $0) }
-                }
-            }
-        }
-    }
-
-    private var resources: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            sectionLabel("Resources")
-            ForEach(Array(asset.resources.enumerated()), id: \.offset) { _, resource in
-                resourceRow(resource)
+        VStack(alignment: .leading, spacing: 4) {
+            Text(asset.name)
+                .font(.title.bold())
+                .accessibilityAddTraits(.isHeader)
+            if !asset.ticker.isEmpty {
+                Text(asset.ticker.uppercased())
+                    .font(.headline)
+                    .monospaced()
+                    .foregroundStyle(.secondary)
             }
         }
     }
@@ -133,32 +118,35 @@ struct AssetDetailView: View {
     private func resourceRow(_ resource: Resource) -> some View {
         Button {
             guard let url = URL(string: resource.url), url.isWebLink else {
-                toast.show("Only web links (http or https) can be opened", .error)
+                alert = ScreenAlert(title: "Can't Open Link",
+                                    message: "Only web links (http or https) can be opened.")
                 return
             }
-            openURL(url)
+            openURL(url, prefersInApp: true)
         } label: {
             HStack(spacing: 12) {
                 favicon(resource.favicon)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(resource.title.isEmpty ? resource.url : resource.title)
-                        .font(.subheadline)
-                        .foregroundStyle(Theme.textPrimary)
+                        .foregroundStyle(.primary)
                         .lineLimit(1)
                     Text(resource.url)
                         .font(.caption)
-                        .foregroundStyle(Theme.textTertiary)
+                        .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }
                 Spacer(minLength: 0)
                 Image(systemName: "arrow.up.right")
-                    .font(.caption)
-                    .foregroundStyle(Theme.textTertiary)
+                    .font(.footnote)
+                    .foregroundStyle(.tertiary)
             }
-            .padding(12)
-            .glassSurface(in: RoundedRectangle(cornerRadius: 12), interactive: true)
         }
-        .buttonStyle(.plain)
+        .contextMenu {
+            if let url = URL(string: resource.url), url.isWebLink {
+                Button("Copy Link", systemImage: "doc.on.doc") { UIPasteboard.general.url = url }
+                ShareLink(item: url)
+            }
+        }
     }
 
     // MARK: Helpers
@@ -170,26 +158,25 @@ struct AssetDetailView: View {
                     if let image = phase.image {
                         image.resizable().scaledToFit()
                     } else {
-                        Image(systemName: "link").font(.caption).foregroundStyle(Theme.textTertiary)
+                        faviconPlaceholder
                     }
                 }
             } else {
-                Image(systemName: "link").font(.caption).foregroundStyle(Theme.textTertiary)
+                faviconPlaceholder
             }
         }
-        .frame(width: 20, height: 20)
+        .frame(width: faviconSize, height: faviconSize)
+        .accessibilityHidden(true)
     }
 
-    private func sectionLabel(_ text: String) -> some View {
-        Text(text.uppercased())
-            .font(.caption.weight(.semibold))
-            .tracking(0.5)
-            .foregroundStyle(Theme.textTertiary)
+    private var faviconPlaceholder: some View {
+        Image(systemName: "link").font(.caption).foregroundStyle(.secondary)
     }
 
     // MARK: Actions
 
-    private func applyEdit(_ draft: AssetDraft) async -> Bool {
+    /// Throws so the editor sheet can stay open and show the error.
+    private func applyEdit(_ draft: AssetDraft) async throws {
         do {
             // The server tidies input (uppercase ticker, lowercase tags), so show what it saved.
             asset = try await repo.updateAsset(id: asset.id, fields: AssetUpdate(
@@ -197,27 +184,23 @@ struct AssetDetailView: View {
                 description: draft.description, tags: draft.tags,
                 resources: draft.resources, image_url: draft.imageUrl
             ))
-            Haptics.success()
-            toast.show("Asset updated", .success)
-            onChanged()
-            return true
         } catch {
             Haptics.error()
-            toast.show(error.userMessage, .error)
-            return false
+            throw error
         }
+        Haptics.success()
+        onChanged()
     }
 
     private func deleteAsset() async {
         do {
             try await repo.deleteAsset(id: asset.id)
             Haptics.success()
-            toast.show("Asset deleted", .success)
             onChanged()
             dismiss()
         } catch {
             Haptics.error()
-            toast.show(error.userMessage, .error)
+            alert = ScreenAlert(title: "Couldn't Delete Asset", message: error.userMessage)
         }
     }
 }

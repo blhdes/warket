@@ -3,6 +3,7 @@ import SwiftUI
 /// Compact asset row for the assets list: thumbnail, name + ticker, summary.
 struct AssetRow: View {
     let asset: Asset
+    @ScaledMetric(relativeTo: .body) private var thumbSize: CGFloat = 40
 
     var body: some View {
         HStack(spacing: 12) {
@@ -12,18 +13,18 @@ struct AssetRow: View {
                 HStack(spacing: 6) {
                     Text(asset.name)
                         .font(.headline)
-                        .foregroundStyle(Theme.textPrimary)
                         .lineLimit(1)
                     if !asset.ticker.isEmpty {
                         Text(asset.ticker.uppercased())
-                            .font(.mono(12, relativeTo: .caption))
-                            .foregroundStyle(Theme.accent)
+                            .font(.caption.weight(.semibold))
+                            .monospaced()
+                            .foregroundStyle(.secondary)
                     }
                 }
                 if !asset.summary.isEmpty {
                     Text(asset.summary)
                         .font(.subheadline)
-                        .foregroundStyle(Theme.textSecondary)
+                        .foregroundStyle(.secondary)
                         .lineLimit(2)
                 }
             }
@@ -48,17 +49,18 @@ struct AssetRow: View {
                 placeholder
             }
         }
-        .frame(width: 40, height: 40)
-        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.md))
+        .frame(width: thumbSize, height: thumbSize)
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .accessibilityHidden(true)
     }
 
     private var placeholder: some View {
-        RoundedRectangle(cornerRadius: Theme.Radius.md)
-            .fill(Theme.surface3)
+        RoundedRectangle(cornerRadius: 8, style: .continuous)
+            .fill(.fill.tertiary)
             .overlay(
                 Text(initials)
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(Theme.textTertiary)
+                    .foregroundStyle(.secondary)
             )
     }
 

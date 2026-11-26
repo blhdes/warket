@@ -20,7 +20,7 @@ private struct VaultAccountActions: ViewModifier {
                     .presentationDetents([.medium, .large])
             }
             .confirmationDialog("Lock this vault?", isPresented: shows(.lock), titleVisibility: .visible) {
-                Button("Lock vault", role: .destructive) { session.signOut() }
+                Button("Lock Vault", role: .destructive) { session.signOut() }
                 Button("Cancel", role: .cancel) {}
             } message: {
                 Text("You will need your 12 words to get back in.")
@@ -46,7 +46,6 @@ extension View {
 private struct DeleteVaultSheet: View {
     let repo: VaultRepository
     @Environment(Session.self) private var session
-    @Environment(ToastCenter.self) private var toast
     @Environment(\.dismiss) private var dismiss
 
     @State private var confirming = false
@@ -55,77 +54,46 @@ private struct DeleteVaultSheet: View {
 
     var body: some View {
         NavigationStack {
-            ZStack {
-                MarketPulseBackground()
-                ScrollView {
-                    VStack(spacing: 20) {
-                        warning
-                        if let errorMessage {
-                            Label(errorMessage, systemImage: "exclamationmark.triangle.fill")
-                                .font(.footnote)
-                                .foregroundStyle(Theme.error)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                        }
-                        deleteButton
+            Form {
+                Section {
+                    Label {
+                        Text("Delete everything in this vault?").font(.headline)
+                    } icon: {
+                        Image(systemName: "trash").foregroundStyle(.red)
                     }
-                    .padding(24)
-                    .frame(maxWidth: 440)
-                    .frame(maxWidth: .infinity)
+                    Text("""
+                    Every list and asset in this vault is erased from the server, and any share key \
+                    you gave out stops working. Your 12 words will still open the vault, but it will be empty.
+                    """)
+                    .foregroundStyle(.secondary)
+                } footer: {
+                    Text("Want a copy first? Close this and use Export Vault.")
+                }
+                Section {
+                    Button(role: .destructive) { confirming = true } label: {
+                        if deleting { ProgressView() } else { Text("Delete Vault") }
+                    }
+                    .disabled(deleting)
+                } footer: {
+                    if let errorMessage { Text(errorMessage).foregroundStyle(.red) }
                 }
             }
-            .navigationTitle("Delete vault")
+            .scrollBounceBehavior(.basedOnSize)
+            .navigationTitle("Delete Vault")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }.disabled(deleting)
+                    Button(role: .close) { dismiss() }.disabled(deleting)
                 }
             }
         }
         .interactiveDismissDisabled(deleting)
         .confirmationDialog("Delete this vault forever?", isPresented: $confirming, titleVisibility: .visible) {
-            Button("Delete forever", role: .destructive) { Task { await deleteVault() } }
+            Button("Delete Forever", role: .destructive) { Task { await deleteVault() } }
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("This cannot be undone.")
         }
-    }
-
-    private var warning: some View {
-        VStack(spacing: 10) {
-            Image(systemName: "trash")
-                .font(.largeTitle)
-                .foregroundStyle(Theme.error)
-            Text("Delete everything in this vault?")
-                .font(.headline)
-                .foregroundStyle(Theme.textPrimary)
-            Text("""
-            Every list and asset in this vault is erased from the server, and any share key \
-            you gave out stops working. Your 12 words will still open the vault, but it will be empty.
-            """)
-            Text("Want a copy first? Close this and use Export vault.")
-        }
-        .font(.footnote)
-        .foregroundStyle(Theme.textSecondary)
-        .multilineTextAlignment(.center)
-        .padding(.top, 8)
-    }
-
-    private var deleteButton: some View {
-        Button { confirming = true } label: {
-            Group {
-                if deleting {
-                    ProgressView().tint(.white)
-                } else {
-                    Text("Delete vault").font(.headline)
-                }
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 16)
-            .foregroundStyle(.white)
-            .background(Capsule().fill(Theme.error))
-        }
-        .buttonStyle(.plain)
-        .disabled(deleting)
     }
 
     private func deleteVault() async {
@@ -135,11 +103,10 @@ private struct DeleteVaultSheet: View {
         do {
             try await repo.deleteVault()
             Haptics.success()
-            toast.show("Vault deleted", .success)
             dismiss()
             session.signOut()
         } catch {
-            // Shown in the sheet: a toast would sit hidden behind it.
+            // Shown in the sheet itself, which stays open so the person can try again.
             Haptics.error()
             errorMessage = error.userMessage
         }

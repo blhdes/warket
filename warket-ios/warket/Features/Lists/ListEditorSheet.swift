@@ -9,26 +9,30 @@ struct ListEditorSheet: View {
     }
 
     let mode: Mode
-    /// Returns `true` on a successful save. On `false` the sheet stays open so
-    /// the user can retry without losing their input.
-    let onSave: (_ name: String, _ tags: [String]) async -> Bool
+    /// Throws when the server refuses the change. The sheet stays open, keeps the input and shows why.
+    let onSave: (_ name: String, _ tags: [String]) async throws -> Void
 
     @Environment(\.dismiss) private var dismiss
+    private let originalName: String
+    private let originalTags: [String]
     @State private var name: String
     @State private var tags: [String]
     @State private var isSaving = false
+    @State private var saveError: ScreenAlert?
 
-    init(mode: Mode, onSave: @escaping (String, [String]) async -> Bool) {
+    init(mode: Mode, onSave: @escaping (String, [String]) async throws -> Void) {
         self.mode = mode
         self.onSave = onSave
         switch mode {
         case .create:
-            _name = State(initialValue: "")
-            _tags = State(initialValue: [])
+            originalName = ""
+            originalTags = []
         case .edit(let list):
-            _name = State(initialValue: list.name)
-            _tags = State(initialValue: list.tags)
+            originalName = list.name
+            originalTags = list.tags
         }
+        _name = State(initialValue: originalName)
+        _tags = State(initialValue: originalTags)
     }
 
     var body: some View {
@@ -41,20 +45,22 @@ struct ListEditorSheet: View {
                     TagEditor(tags: $tags)
                 }
             }
-            .scrollContentBackground(.hidden)
-            .background(Theme.surface0)
+            .scrollBounceBehavior(.basedOnSize)
             .navigationTitle(isCreate ? "New List" : "Edit List")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button(role: .close) { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") { Task { await save() } }
+                    Button(role: .confirm) { Task { await save() } }
                         .disabled(trimmedName.isEmpty || isSaving)
+                        .accessibilityLabel("Save")
                 }
             }
+            .screenAlert($saveError)
         }
+        .confirmDiscard(when: hasChanges)
     }
 
     private var isCreate: Bool {
@@ -66,12 +72,18 @@ struct ListEditorSheet: View {
         name.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
+    private var hasChanges: Bool {
+        trimmedName != originalName || tags != originalTags
+    }
+
     private func save() async {
         isSaving = true
-        if await onSave(trimmedName, tags) {
+        defer { isSaving = false }
+        do {
+            try await onSave(trimmedName, tags)
             dismiss()
-        } else {
-            isSaving = false
+        } catch {
+            saveError = ScreenAlert(title: "Couldn't Save", message: error.userMessage)
         }
     }
 }

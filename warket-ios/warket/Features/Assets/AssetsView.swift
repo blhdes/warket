@@ -6,7 +6,6 @@ struct AssetsView: View {
     let list: VaultList
     let repo: VaultRepository
     var readOnly = false
-    @Environment(ToastCenter.self) private var toast
 
     @State private var assets: [Asset] = []
     @State private var phase: Phase = .loading
@@ -18,15 +17,18 @@ struct AssetsView: View {
     @State private var pendingDelete: Asset?
     @State private var reloadToken = UUID()
     @State private var reorderTask: Task<Void, Never>?
+    @State private var alert: ScreenAlert?
+
+    @Namespace private var zoom
 
     private enum Phase: Equatable { case loading, loaded, failed(String) }
 
     var body: some View {
-        ZStack {
-            MarketPulseBackground()
-            content
-        }
+        content
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(.systemGroupedBackground))
         .navigationTitle(list.name)
+        .readOnlySubtitle(readOnly)
         .navigationBarTitleDisplayMode(.inline)
         .searchable(text: $search, prompt: "Search assets")
         .toolbar { toolbarContent }
@@ -36,10 +38,11 @@ struct AssetsView: View {
             AssetDetailView(asset: asset, repo: repo, readOnly: readOnly) { reloadToken = UUID() }
         }
         .sheet(isPresented: $showingCreate) {
-            AssetEditorSheet(mode: .create) { draft in await createAsset(draft) }
+            AssetEditorSheet(mode: .create) { draft in try await createAsset(draft) }
+                .navigationTransition(.zoom(sourceID: "newAsset", in: zoom))
         }
         .sheet(item: $editing) { asset in
-            AssetEditorSheet(mode: .edit(asset)) { draft in await updateAsset(asset, draft) }
+            AssetEditorSheet(mode: .edit(asset)) { draft in try await updateAsset(asset, draft) }
         }
         .confirmationDialog(
             "Delete \u{201C}\(pendingDelete?.name ?? "")\u{201D}?",
@@ -47,9 +50,10 @@ struct AssetsView: View {
             titleVisibility: .visible,
             presenting: pendingDelete
         ) { asset in
-            Button("Delete asset", role: .destructive) { Task { await delete(asset) } }
+            Button("Delete Asset", role: .destructive) { Task { await delete(asset) } }
             Button("Cancel", role: .cancel) {}
         }
+        .screenAlert($alert)
     }
 
     // MARK: - Content
@@ -58,27 +62,27 @@ struct AssetsView: View {
     private var content: some View {
         switch phase {
         case .loading:
-            ProgressView().tint(Theme.accent)
+            ProgressView()
 
         case .failed(let message):
-            StateMessage(
-                icon: "exclamationmark.triangle", title: "Couldn't load assets", detail: message,
-                tint: Theme.error, actionTitle: "Try again"
-            ) {
-                phase = .loading
-                Task { await load() }
+            ContentUnavailableView {
+                Label("Couldn't Load Assets", systemImage: "exclamationmark.triangle")
+            } description: {
+                Text(message)
+            } actions: {
+                Button("Try Again") {
+                    phase = .loading
+                    Task { await load() }
+                }
+                .buttonStyle(.bordered)
             }
 
         case .loaded:
-            let tags = allTags
             let filtered = filteredAssets
-            VStack(spacing: 0) {
-                if !tags.isEmpty { tagFilterBar(tags) }
-                if filtered.isEmpty {
-                    emptyState
-                } else {
-                    assetList(filtered)
-                }
+            if filtered.isEmpty {
+                emptyState
+            } else {
+                assetList(filtered)
             }
         }
     }
@@ -89,9 +93,6 @@ struct AssetsView: View {
                 NavigationLink(value: asset) {
                     AssetRow(asset: asset)
                 }
-                .listRowBackground(glassRowBackground)
-                .listRowSeparator(.hidden)
-                .listRowInsets(EdgeInsets(top: 12, leading: 22, bottom: 12, trailing: 22))
                 .swipeActions(edge: .trailing) {
                     if !readOnly {
                         Button(role: .destructive) { pendingDelete = asset } label: {
@@ -100,59 +101,49 @@ struct AssetsView: View {
                         Button { editing = asset } label: {
                             Label("Edit", systemImage: "pencil")
                         }
-                        .tint(Theme.accent)
+                        .tint(.accentColor)
                     }
                 }
             }
             .onMove(perform: (readOnly || isFiltered) ? nil : move)
         }
-        .listStyle(.plain)
-        .scrollContentBackground(.hidden)
-    }
-
-    /// Inset glass slab behind each asset row, matching the lists screen so the
-    /// drill-down keeps the same floating-card vocabulary over the mesh.
-    private var glassRowBackground: some View {
-        Color.clear
-            .glassSurface(in: RoundedRectangle(cornerRadius: 14))
-            .padding(.horizontal, 16)
-            .padding(.vertical, 3)
-    }
-
-    private func tagFilterBar(_ tags: [String]) -> some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                ForEach(tags, id: \.self) { tag in
-                    Button {
-                        activeTag = (activeTag == tag) ? nil : tag
-                        Haptics.selection()
-                    } label: {
-                        TagPill(text: tag, selected: activeTag == tag)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
-        }
+        .listStyle(.insetGrouped)
     }
 
     @ViewBuilder
     private var emptyState: some View {
         if assets.isEmpty {
-            StateMessage(icon: "tray", title: "No assets yet", detail: "Tap + to add your first asset.", tint: Theme.textTertiary)
+            ContentUnavailableView("No Assets Yet", systemImage: "tray",
+                                   description: Text("Tap + to add your first asset."))
         } else {
-            StateMessage(icon: "magnifyingglass", title: "No matches", detail: "Try a different search or tag.", tint: Theme.textTertiary)
+            ContentUnavailableView {
+                Label("No Matches", systemImage: "magnifyingglass")
+            } description: {
+                Text("Try a different search or tag.")
+            } actions: {
+                Button("Show All") { search = ""; activeTag = nil }
+            }
         }
     }
 
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
         if !readOnly {
-            ToolbarItem(placement: .topBarLeading) { EditButton() }
+            ToolbarItem(placement: .topBarTrailing) { EditButton() }
+        }
+        if !allTags.isEmpty {
+            ToolbarSpacer(.fixed, placement: .topBarTrailing)
             ToolbarItem(placement: .topBarTrailing) {
-                Button { showingCreate = true } label: { Image(systemName: "plus") }
+                TagFilterMenu(tags: allTags, selection: $activeTag)
             }
+        }
+        DefaultToolbarItem(kind: .search, placement: .bottomBar)
+        if !readOnly {
+            ToolbarSpacer(.fixed, placement: .bottomBar)
+            ToolbarItem(placement: .bottomBar) {
+                Button("New Asset", systemImage: "plus") { showingCreate = true }
+            }
+            .matchedTransitionSource(id: "newAsset", in: zoom)
         }
     }
 
@@ -199,7 +190,8 @@ struct AssetsView: View {
         }
     }
 
-    private func createAsset(_ draft: AssetDraft) async -> Bool {
+    /// Throws so the editor sheet can stay open and show the error.
+    private func createAsset(_ draft: AssetDraft) async throws {
         do {
             try await repo.addAsset(
                 listId: list.id,
@@ -211,45 +203,38 @@ struct AssetsView: View {
                 resources: draft.resources,
                 imageUrl: draft.imageUrl.isEmpty ? nil : draft.imageUrl
             )
-            Haptics.success()
-            toast.show("Asset added", .success)
-            await load()
-            return true
         } catch {
             Haptics.error()
-            toast.show(error.userMessage, .error)
-            return false
+            throw error
         }
+        Haptics.success()
+        await load()
     }
 
-    private func updateAsset(_ original: Asset, _ draft: AssetDraft) async -> Bool {
+    private func updateAsset(_ original: Asset, _ draft: AssetDraft) async throws {
         do {
             try await repo.updateAsset(id: original.id, fields: AssetUpdate(
                 name: draft.name, ticker: draft.ticker, summary: draft.summary,
                 description: draft.description, tags: draft.tags,
                 resources: draft.resources, image_url: draft.imageUrl
             ))
-            Haptics.success()
-            toast.show("Asset updated", .success)
-            await load()
-            return true
         } catch {
             Haptics.error()
-            toast.show(error.userMessage, .error)
-            return false
+            throw error
         }
+        Haptics.success()
+        await load()
     }
 
     private func delete(_ asset: Asset) async {
         do {
             try await repo.deleteAsset(id: asset.id)
             Haptics.success()
-            toast.show("Asset deleted", .success)
             pendingDelete = nil
             await load()
         } catch {
             Haptics.error()
-            toast.show(error.userMessage, .error)
+            alert = ScreenAlert(title: "Couldn't Delete Asset", message: error.userMessage)
         }
     }
 
@@ -264,7 +249,8 @@ struct AssetsView: View {
             } catch {
                 // Cancelled means a newer drag replaced this one and will save the order itself.
                 guard !Task.isCancelled else { return }
-                toast.show(error.userMessage, .error)
+                Haptics.error()
+                alert = ScreenAlert(title: "Couldn't Save the Order", message: error.userMessage)
                 await load() // nothing was saved, so show the server's order again
             }
         }
