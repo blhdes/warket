@@ -35,10 +35,6 @@
 	<key>UIAppFonts</key>
 	<array>
 		<string>InstrumentSerif-Regular.ttf</string>
-		<string>InstrumentSerif-Italic.ttf</string>
-		<string>JetBrainsMono-Regular.ttf</string>
-		<string>JetBrainsMono-Medium.ttf</string>
-		<string>JetBrainsMono-SemiBold.ttf</string>
 	</array>
 </dict>
 </plist>
